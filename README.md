@@ -44,14 +44,17 @@
 > Для работы парсера необходимо установить браузер [Google Chrome](https://google.com/chrome).
 
 ### Установка этого форка из исходников
+Дистрибутив форка называется **`parser-2gis-new`** (import-пакет остался `parser_2gis`).
   ```bash
   git clone <этот-репозиторий>
-  cd parser-2gis
+  cd parser-2gis-new
   python -m venv .venv
   # CLI + GUI + веб-интерфейс
   pip install -e ".[gui,web]"
   ```
-  Запуск: `parser-2gis` (GUI), `parser-2gis --web` (браузер) или `parser-2gis -i <URL> -o out.csv -f csv` (CLI).
+  Запуск (доступны обе команды — `parser-2gis` и `parser-2gis-new`):
+  `parser-2gis-new` (GUI), `parser-2gis-new --web` (браузер) или
+  `parser-2gis-new -i <URL> -o out.csv -f csv` (CLI).
 
   > GUI использует [FreeSimpleGUI](https://pypi.org/project/FreeSimpleGUI/) — поддерживаемый
   > open-source форк PySimpleGUI (оригинальный пин `PySimpleGUI==4.59.0` был удалён из PyPI).

@@ -79,9 +79,9 @@ class BuildStandaloneCommand(distutils.cmd.Command):
 
 if __name__ == '__main__':
     setup(
-        name='parser-2gis',
+        name='parser-2gis-new',
         version=version,
-        description='Парсер сайта 2GIS',
+        description='Парсер сайта 2GIS (форк parser-2gis)',
         long_description=long_description,
         long_description_content_type=long_description_content_type,
         author='Andy Trofimov',
@@ -134,6 +134,9 @@ if __name__ == '__main__':
             "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
         ],
         license='LGPLv3+',
-        entry_points={'console_scripts': ['parser-2gis = parser_2gis:main']},
+        entry_points={'console_scripts': [
+            'parser-2gis = parser_2gis:main',
+            'parser-2gis-new = parser_2gis:main',
+        ]},
         cmdclass={'build_standalone': BuildStandaloneCommand}
     )
