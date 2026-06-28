@@ -56,7 +56,8 @@ class GUIRunner(AbstractRunner, threading.Thread):
 
     def run(self) -> None:
         """Thread's activity."""
-        with get_writer(self._output_path, self._format, self._config.writer) as writer:
+        with get_writer(self._output_path, self._format, self._config.writer,
+                        self._config.filters) as writer:
             for url in self._urls:
                 try:
                     logger.info(f'Парсинг ссылки {url}')

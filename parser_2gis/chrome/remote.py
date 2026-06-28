@@ -88,6 +88,15 @@ class ChromeRemote:
         fixed_useragent = original_useragent.replace('Headless', '')
         self._chrome_tab.Network.setUserAgentOverride(userAgent=fixed_useragent)
 
+        # Force a real, large viewport for the headless tab. A DevTools-created
+        # tab otherwise gets a tiny default viewport, which makes the 2GIS WebGL
+        # map collapse to a single geographic point. The page then sends a
+        # degenerate bounding box (viewpoint1 == viewpoint2) to the catalog API,
+        # which rejects it with HTTP 400 "Bound is incorrect".
+        if self._chrome_options.headless:
+            self._chrome_tab.Emulation.setDeviceMetricsOverride(
+                width=1920, height=1080, deviceScaleFactor=1, mobile=False)
+
         # Hide webdriver traces
         self.add_start_script(r'''
             Object.defineProperty(navigator, 'webdriver', {

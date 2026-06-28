@@ -3,7 +3,7 @@ import pathlib
 import re
 import sys
 
-from setuptools import setup
+from setuptools import find_packages, setup
 
 
 PACKAGE_NAME = 'parser_2gis'
@@ -86,7 +86,7 @@ if __name__ == '__main__':
         long_description_content_type=long_description_content_type,
         author='Andy Trofimov',
         author_email='interlark@gmail.com',
-        packages=[PACKAGE_NAME],
+        packages=find_packages(include=[PACKAGE_NAME, f'{PACKAGE_NAME}.*']),
         include_package_data=True,
         python_requires='>=3.8',
         keywords='parser scraper 2gis',
@@ -97,28 +97,26 @@ if __name__ == '__main__':
             'Changelog': 'https://github.com/interlark/parser-2gis/blob/main/CHANGELOG.md',
         },
         install_requires=[
-            'pychrome==0.2.4',
-            'pydantic>=1.9.0,<2.0',
+            'pychrome>=0.2.4',
+            'pydantic>=2.0,<3.0',
             'psutil>=5.4.8',
             'requests>=2.13.0',
             'xlsxwriter>=3.0.5',
         ],
         extras_require={
             'gui': [
-                'PySimpleGUI==4.59.0',
+                'FreeSimpleGUI>=5.1.0',
             ],
-            'dev': (
-                (
-                    ["pyinstaller>=5.0,<5.7.0"]
-                    if sys.platform.startswith("win")
-                    else ["pyinstaller>=6.6.0"]
-                ) + [
-                    "pytest>=6.2,<8",
-                    "tox>=3.5,<4",
-                    "pre-commit>=2.6",
-                    "wheel>=0.36.2,<0.38",
-                ]
-            ),
+            'web': [
+                'Flask>=2.2',
+            ],
+            'dev': [
+                'pyinstaller>=6.6.0',
+                'pytest>=7.0',
+                'tox>=4',
+                'pre-commit>=3',
+                'wheel>=0.40',
+            ],
         },
         classifiers=[
             "Topic :: Internet",
@@ -129,6 +127,8 @@ if __name__ == '__main__':
             "Programming Language :: Python :: 3.9",
             "Programming Language :: Python :: 3.10",
             "Programming Language :: Python :: 3.11",
+            "Programming Language :: Python :: 3.12",
+            "Programming Language :: Python :: 3.13",
             "Natural Language :: Russian",
             "Intended Audience :: End Users/Desktop",
             "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",

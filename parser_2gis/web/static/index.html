@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parser 2GIS</title>
+<style>
+  :root{
+    --bg:#f5f6fa; --surface:#fff; --text:#0f172a; --muted:#64748b; --line:#e6e8ef;
+    --primary:#6366f1; --primary-dark:#4f51e0; --on-primary:#fff;
+    --wa:#25d366; --tg:#229ed9; --ig:#d6307a; --gis:#1e9e4a;
+    --danger:#dc2626; --ok:#16a34a; --warn:#b45309;
+    --shadow:0 1px 2px rgba(16,24,40,.05),0 6px 20px rgba(16,24,40,.06);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;font-size:14px}
+  .app{display:grid;grid-template-columns:380px 1fr;min-height:100vh}
+  /* ---- Sidebar (control panel) ---- */
+  aside{background:var(--surface);border-right:1px solid var(--line);
+    padding:22px 22px 28px;display:flex;flex-direction:column;gap:20px;
+    position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--primary),#8b5cf6);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px}
+  .brand h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.01em}
+  .group{display:flex;flex-direction:column;gap:9px}
+  .group>label.h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  textarea,input[type=number],select{width:100%;border:1px solid var(--line);border-radius:10px;
+    padding:10px 12px;font:inherit;background:#fff;color:var(--text);outline:none;
+    transition:border-color .15s,box-shadow .15s}
+  textarea{min-height:92px;resize:vertical;line-height:1.45}
+  textarea:focus,input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(99,102,241,.13)}
+  .hint{font-size:12px;color:var(--muted);line-height:1.4}
+  .check{display:flex;align-items:center;gap:9px;font-size:13.5px;cursor:pointer;
+    padding:7px 9px;border-radius:9px;transition:background .12s}
+  .check:hover{background:#f6f7fb}
+  .check input{width:17px;height:17px;accent-color:var(--primary);cursor:pointer}
+  .rowmini{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field span{font-size:12px;color:var(--muted)}
+  .actions-bar{display:flex;gap:10px;margin-top:4px}
+  button{font:inherit;font-weight:650;border:none;border-radius:11px;padding:12px 16px;cursor:pointer;
+    transition:filter .12s,transform .05s,background .15s}
+  button:active{transform:translateY(1px)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .btn-run{flex:1;background:var(--primary);color:var(--on-primary)}
+  .btn-run:hover:not(:disabled){background:var(--primary-dark)}
+  .btn-stop{flex:1;background:#fff;color:var(--danger);border:1px solid #f3c6c6}
+  .btn-stop:hover:not(:disabled){background:#fef2f2}
+  /* ---- Main ---- */
+  main{display:flex;flex-direction:column;min-width:0}
+  .topbar{position:sticky;top:0;z-index:5;background:rgba(245,246,250,.85);
+    backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line);
+    padding:14px clamp(16px,3vw,28px);display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;
+    padding:6px 12px;border-radius:999px;background:#eef0f6;color:var(--muted)}
+  .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+  .pill.run{background:#eef2ff;color:var(--primary)} .pill.run .dot{background:var(--primary);animation:pulse 1.1s infinite}
+  .pill.done{background:#eaf7ee;color:var(--ok)} .pill.done .dot{background:var(--ok)}
+  .pill.err{background:#fdeaea;color:var(--danger)} .pill.err .dot{background:var(--danger)}
+  .pill.stop{background:#fff5e6;color:var(--warn)} .pill.stop .dot{background:var(--warn)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  #count{font-size:13.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  #search{flex:1;min-width:180px;padding:10px 13px;border:1px solid var(--line);border-radius:11px;
+    background:#fff;font:inherit;outline:none}
+  #search:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(99,102,241,.13)}
+  .dl{display:flex;gap:8px;align-items:center}
+  .dl select{width:auto;padding:9px 11px}
+  .btn-dl{background:#0f172a;color:#fff;padding:10px 14px}
+  .btn-dl:hover:not(:disabled){filter:brightness(1.15)}
+  .content{padding:clamp(16px,3vw,28px);min-width:0}
+  details.log{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    margin-bottom:18px;box-shadow:var(--shadow)}
+  details.log summary{cursor:pointer;padding:13px 16px;font-weight:650;list-style:none;display:flex;
+    align-items:center;gap:8px;user-select:none}
+  details.log summary::-webkit-details-marker{display:none}
+  details.log summary::before{content:"›";font-size:18px;transition:transform .15s;color:var(--muted)}
+  details.log[open] summary::before{transform:rotate(90deg)}
+  #logbox{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;
+    line-height:1.6;color:#334155;background:#fafbfd;border-top:1px solid var(--line);
+    padding:12px 16px;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(310px,1fr))}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:17px 17px 15px;
+    box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;
+    transition:transform .12s,box-shadow .12s}
+  .card:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(16,24,40,.1)}
+  .card-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .card h2{font-size:16px;margin:0;font-weight:650;letter-spacing:-.01em;line-height:1.25}
+  .rating{white-space:nowrap;color:#a9700a;background:#fff6e6;border:1px solid #ffe6b0;
+    padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+  .rubrics{color:var(--primary);font-size:12.5px;font-weight:500}
+  .meta{color:var(--muted);font-size:13px;line-height:1.4}
+  .acts{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px}
+  .b{display:inline-flex;align-items:center;gap:5px;text-decoration:none;font-size:12.5px;font-weight:600;
+    color:var(--text);background:#f1f3f8;border:1px solid var(--line);padding:6px 10px;border-radius:9px;
+    transition:filter .12s,transform .05s}
+  .b:hover{filter:brightness(.96)} .b:active{transform:scale(.97)}
+  .b.wa{background:var(--wa);border-color:transparent;color:#fff}
+  .b.tg{background:#e8f4fb;border-color:#cfe9f8;color:#1b7fb8}
+  .b.ig{background:#fdeef5;border-color:#f7d3e4;color:var(--ig)}
+  .b.gis{background:#eafaef;border-color:#cdeed7;color:var(--gis)}
+  .empty{text-align:center;color:var(--muted);padding:70px 16px;font-size:15px;line-height:1.6}
+  .empty .big{font-size:42px;margin-bottom:10px}
+  @media (max-width:880px){
+    .app{grid-template-columns:1fr}
+    aside{position:static;max-height:none;border-right:none;border-bottom:1px solid var(--line)}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand"><div class="logo">2G</div><h1>Parser 2GIS</h1></div>
+
+    <div class="group">
+      <label class="h" for="urls">Направления</label>
+      <textarea id="urls" placeholder="https://2gis.kz/almaty/search/Кафе&#10;https://2gis.ru/moscow/search/Аптеки"></textarea>
+      <div class="hint">По одной ссылке 2GIS на строку. Можно несколько городов и рубрик.</div>
+    </div>
+
+    <div class="group">
+      <label class="h">Фильтры</label>
+      <label class="check"><input type="checkbox" id="f_dedup"> Без франшиз (1 на организацию)</label>
+      <label class="check"><input type="checkbox" id="f_phone"> Только с телефоном</label>
+      <label class="check"><input type="checkbox" id="f_wa"> Только с WhatsApp</label>
+      <label class="check"><input type="checkbox" id="f_social"> Только с соцсетями</label>
+      <label class="check"><input type="checkbox" id="f_email"> Только с e-mail</label>
+      <label class="check"><input type="checkbox" id="f_site"> Только с сайтом</label>
+      <div class="rowmini">
+        <label class="field"><span>Рейтинг от</span><input type="number" id="f_rating" min="0" max="5" step="0.1" value="0"></label>
+        <label class="field"><span>Отзывов от</span><input type="number" id="f_reviews" min="0" step="1" value="0"></label>
+      </div>
+    </div>
+
+    <div class="group">
+      <label class="h">Параметры</label>
+      <div class="rowmini">
+        <label class="field"><span>Макс. записей</span><input type="number" id="maxrec" min="1" step="1" value="50"></label>
+        <label class="field"><span>Формат файла</span>
+          <select id="format"><option value="csv">CSV</option><option value="xlsx">XLSX</option>
+            <option value="json">JSON</option><option value="html">HTML</option></select></label>
+      </div>
+      <label class="check"><input type="checkbox" id="clean" checked> Чистый вид (без мусора)</label>
+      <label class="check"><input type="checkbox" id="headless" checked> Скрытый браузер (headless)</label>
+    </div>
+
+    <div class="actions-bar">
+      <button class="btn-run" id="run">Запустить</button>
+      <button class="btn-stop" id="stop" style="display:none">Остановить</button>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <span class="pill" id="pill"><span class="dot"></span><span id="pilltext">Готов</span></span>
+      <span id="count"></span>
+      <input id="search" type="search" placeholder="Поиск в результатах…" autocomplete="off">
+      <div class="dl">
+        <button class="btn-dl" id="download" disabled>Скачать</button>
+      </div>
+    </div>
+    <div class="content">
+      <details class="log" id="logwrap" style="display:none">
+        <summary>Журнал парсинга</summary>
+        <div id="logbox"></div>
+      </details>
+      <div class="grid" id="grid"></div>
+      <div class="empty" id="empty"><div class="big">🔎</div>Укажите направления слева и нажмите «Запустить».</div>
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var poll=null, cursor=0, records=[];
+
+  function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function digits(s){return (s||'').replace(/\D/g,'');}
+
+  function payload(){
+    return {
+      urls: $('urls').value.split('\n'),
+      max_records: parseInt($('maxrec').value||'50',10),
+      headless: $('headless').checked,
+      clean: $('clean').checked,
+      filters: {
+        dedup_franchises:$('f_dedup').checked, require_phone:$('f_phone').checked,
+        require_whatsapp:$('f_wa').checked, require_social:$('f_social').checked,
+        require_email:$('f_email').checked, require_website:$('f_site').checked,
+        min_rating:parseFloat($('f_rating').value||'0'), min_reviews:parseInt($('f_reviews').value||'0',10)
+      }
+    };
+  }
+
+  function setStatus(s){
+    var pill=$('pill'), t=$('pilltext');
+    pill.className='pill'; var map={running:['run','Идёт парсинг…'],done:['done','Готово'],
+      stopped:['stop','Остановлено'],error:['err','Ошибка'],idle:['','Готов']};
+    var m=map[s]||map.idle; if(m[0])pill.classList.add(m[0]); t.textContent=m[1];
+  }
+
+  function renderCard(r){
+    var c=r.contacts||{}, b=[];
+    if(c.whatsapp) b.push('<a class="b wa" target="_blank" rel="noopener" href="'+esc(c.whatsapp)+'">WhatsApp</a>');
+    if(c.phone) b.push('<a class="b" href="tel:'+digits(c.phone)+'">📞 '+esc(c.phone)+'</a>');
+    if(c.telegram) b.push('<a class="b tg" target="_blank" rel="noopener" href="'+esc(c.telegram)+'">Telegram</a>');
+    if(c.instagram) b.push('<a class="b ig" target="_blank" rel="noopener" href="'+esc(c.instagram)+'">Instagram</a>');
+    if(c.website) b.push('<a class="b" target="_blank" rel="noopener" href="'+esc(c.website)+'">🌐 Сайт</a>');
+    if(c.email) b.push('<a class="b" href="mailto:'+esc(c.email)+'">✉️ E-mail</a>');
+    if(r.url) b.push('<a class="b gis" target="_blank" rel="noopener" href="'+esc(r.url)+'">2GIS</a>');
+    var rating=''; if(r.rating){var rv=r.review_count?(' · '+r.review_count+' отз.'):''; rating='<span class="rating">★ '+esc(r.rating)+esc(rv)+'</span>';}
+    var rub=r.rubrics&&r.rubrics.length?'<div class="rubrics">'+esc(r.rubrics.join(' · '))+'</div>':'';
+    var meta=[]; if(r.address)meta.push(esc(r.address)); if(r.city)meta.push(esc(r.city));
+    var blob=((r.name||'')+' '+(r.address||'')+' '+(r.city||'')+' '+((r.rubrics||[]).join(' '))+' '+(c.phone||'')).toLowerCase();
+    return '<article class="card" data-s="'+esc(blob)+'">'+
+      '<div class="card-head"><h2>'+esc(r.name)+'</h2>'+rating+'</div>'+rub+
+      (meta.length?'<div class="meta">'+meta.join(', ')+'</div>':'')+
+      '<div class="acts">'+b.join('')+'</div></article>';
+  }
+
+  function renderGrid(){
+    var term=$('search').value.trim().toLowerCase();
+    var grid=$('grid'), empty=$('empty');
+    var html='', shown=0;
+    for(var i=0;i<records.length;i++){
+      var r=records[i];
+      var blob=((r.name||'')+' '+(r.address||'')+' '+(r.city||'')+' '+((r.rubrics||[]).join(' '))).toLowerCase();
+      if(term && blob.indexOf(term)<0) continue;
+      html+=renderCard(r); shown++;
+    }
+    grid.innerHTML=html;
+    if(records.length===0){empty.style.display='block';
+      empty.innerHTML='<div class="big">🔎</div>'+($('pilltext').textContent==='Идёт парсинг…'?'Собираем данные…':'Укажите направления слева и нажмите «Запустить».');}
+    else if(shown===0){empty.style.display='block';empty.innerHTML='<div class="big">∅</div>Ничего не найдено по запросу.';}
+    else empty.style.display='none';
+    $('count').textContent=records.length?(records.length+' найдено'):'';
+  }
+
+  function tick(){
+    fetch('/api/status?cursor='+cursor).then(function(r){return r.json()}).then(function(d){
+      cursor=d.cursor;
+      if(d.logs && d.logs.length){var lb=$('logbox'); lb.textContent+=(lb.textContent?'\n':'')+d.logs.join('\n'); lb.scrollTop=lb.scrollHeight;}
+      $('count').textContent=d.count?(d.count+(d.running?' собрано…':' найдено')):'';
+      setStatus(d.status);
+      if(!d.running){
+        clearInterval(poll); poll=null;
+        $('run').style.display=''; $('stop').style.display='none';
+        fetch('/api/results').then(function(r){return r.json()}).then(function(res){
+          records=res.records||[]; renderGrid(); $('download').disabled=records.length===0;
+        });
+      }
+    }).catch(function(){});
+  }
+
+  $('run').addEventListener('click',function(){
+    var p=payload();
+    if(!p.urls.filter(function(u){return u.trim()}).length){alert('Укажите хотя бы одну ссылку 2GIS');return;}
+    $('logbox').textContent=''; $('logwrap').style.display=''; $('logwrap').open=true;
+    $('download').disabled=true; records=[]; renderGrid(); cursor=0;
+    fetch('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})
+      .then(function(r){return r.json()}).then(function(d){
+        if(!d.ok){alert(d.error||'Ошибка запуска');return;}
+        $('run').style.display='none'; $('stop').style.display=''; setStatus('running');
+        if(poll)clearInterval(poll); poll=setInterval(tick,700); tick();
+      }).catch(function(e){alert('Сервер недоступен: '+e)});
+  });
+
+  $('stop').addEventListener('click',function(){
+    $('stop').disabled=true;
+    fetch('/api/stop',{method:'POST'}).finally(function(){setTimeout(function(){$('stop').disabled=false},800)});
+  });
+
+  $('download').addEventListener('click',function(){
+    if($('download').disabled)return;
+    window.location='/api/download?format='+encodeURIComponent($('format').value);
+  });
+
+  $('search').addEventListener('input',renderGrid);
+
+  // Restore state on load: show last results / resume a running job.
+  (function init(){
+    fetch('/api/status?cursor=0').then(function(r){return r.json()}).then(function(d){
+      cursor=d.cursor; setStatus(d.status);
+      if(d.logs && d.logs.length){$('logwrap').style.display='';$('logbox').textContent=d.logs.join('\n');}
+      if(d.running){$('run').style.display='none';$('stop').style.display='';
+        if(poll)clearInterval(poll);poll=setInterval(tick,700);}
+      if(d.count){fetch('/api/results').then(function(r){return r.json()}).then(function(res){
+        records=res.records||[];renderGrid();$('download').disabled=records.length===0;});}
+    }).catch(function(){});
+  })();
+})();
+</script>
+</body>
+</html>

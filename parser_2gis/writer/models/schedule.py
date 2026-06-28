@@ -67,8 +67,8 @@ class Schedule(BaseModel):
         Returns:
             Schedule as a string.
         """
-        days_names = [x.name for x in self.__fields__.values() if x.type_ == ScheduleDay]
         days_mapping = dict(Mon='Пн', Tue='Вт', Wed='Ср', Thu='Чт', Fri='Пт', Sat='Сб', Sun='Вс')
+        days_names = list(days_mapping)
 
         slots_list = []
         for day_name in days_names:

@@ -46,8 +46,16 @@ class ChromeBrowser():
 
         if chrome_options.headless:
             logger.debug('В Chrome установлен в скрытый режим.')
-            self._chrome_cmd.append('--headless')
-            self._chrome_cmd.append('--disable-gpu')
+            # Use the "new" headless mode: it renders the WebGL map (mapgl)
+            # that 2GIS relies on. The legacy `--headless` + `--disable-gpu`
+            # combo kept the map from laying out, so the page sent a degenerate
+            # map viewport (viewpoint1 == viewpoint2) that the catalog API now
+            # rejects with HTTP 400 "Bound is incorrect". The tab also needs a
+            # real, large viewport — enforced via Emulation.setDeviceMetricsOverride
+            # in ChromeRemote._setup_tab (the --window-size flag alone does not
+            # reach the DevTools-created tab).
+            self._chrome_cmd.append('--headless=new')
+            self._chrome_cmd.append('--window-size=1920,1080')
 
         if chrome_options.disable_images:
             logger.debug('В Chrome отключены изображения.')

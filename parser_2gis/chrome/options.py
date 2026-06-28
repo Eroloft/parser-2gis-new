@@ -4,7 +4,7 @@ import pathlib
 from typing import Optional
 
 import psutil
-from pydantic import BaseModel, PositiveInt
+from pydantic import BaseModel, ConfigDict, PositiveInt
 
 from ..common import floor_to_hundreds
 
@@ -26,6 +26,8 @@ class ChromeOptions(BaseModel):
         silent_browser: Do not show Chrome's output in `stdout`.
         memory_size: Max V8's memory size.
     """
+    model_config = ConfigDict(validate_assignment=True)
+
     binary_path: Optional[pathlib.Path] = None
     start_maximized: bool = False
     headless: bool = False

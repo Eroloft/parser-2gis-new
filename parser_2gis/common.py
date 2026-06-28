@@ -9,11 +9,11 @@ from typing import Any, Callable
 from pydantic import ValidationError
 
 try:
-    import PySimpleGUI
-    del PySimpleGUI
+    import FreeSimpleGUI
+    del FreeSimpleGUI
     GUI_ENABLED = True
 except ImportError as e:
-    if e.name != 'PySimpleGUI':
+    if e.name != 'FreeSimpleGUI':
         # GUI was installed, but failed to load
         # due to tkinter missing or other dependencies.
         warnings.warn('Failed to load GUI: %s' % e.msg)

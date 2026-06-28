@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 if GUI_ENABLED:
     import tkinter as tk
 
-    import PySimpleGUI as sg
+    import FreeSimpleGUI as sg
 
 
 @ensure_gui_enabled
@@ -48,7 +48,8 @@ def gui_app(urls: list[str], output_path: str, format: str, config: Configuratio
     default_result_format = format if format else 'csv'
     result_filetype = {'csv': [('CSV Table', '*.csv')],
                        'xlsx': [('Microsoft Excel Spreadsheet', '*.xlsx')],
-                       'json': [('JSON', '*.json')]}
+                       'json': [('JSON', '*.json')],
+                       'html': [('HTML Page', '*.html')]}
 
     # If urls wasn't passed then let it be an empty list
     if urls is None:
@@ -69,7 +70,7 @@ def gui_app(urls: list[str], output_path: str, format: str, config: Configuratio
                         [
                             sg.Text('Тип'),
                             sg.Combo(key='-FILE_FORMAT-', default_value=default_result_format,
-                                     values=['csv', 'xlsx', 'json'], readonly=True, enable_events=True),
+                                     values=['csv', 'xlsx', 'json', 'html'], readonly=True, enable_events=True),
                             sg.Text('Путь'),
                             sg.Input(key='-OUTPUT_PATH-', expand_x=True,
                                      default_text='' if output_path is None else output_path),
@@ -257,8 +258,8 @@ def gui_app(urls: list[str], output_path: str, format: str, config: Configuratio
                 continue
 
             # Check result format
-            if values['-FILE_FORMAT-'] not in ('csv', 'xlsx', 'json'):
-                gui_error_popup('Формат результирующего файла должен быть csv, xlsx или json!')
+            if values['-FILE_FORMAT-'] not in ('csv', 'xlsx', 'json', 'html'):
+                gui_error_popup('Формат результирующего файла должен быть csv, xlsx, json или html!')
                 continue
 
             # Check if result format match output file extension

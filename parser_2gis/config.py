@@ -4,7 +4,7 @@ import pathlib
 from json import JSONDecodeError
 from typing import Optional
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from .chrome import ChromeOptions
 from .common import report_from_validation_error
@@ -12,36 +12,27 @@ from .logger import LogOptions, logger
 from .parser import ParserOptions
 from .paths import user_path
 from .version import config_version
-from .writer import WriterOptions
+from .writer import FilterOptions, WriterOptions
 
 
 class Configuration(BaseModel):
     """Configuration model."""
-    log: LogOptions = LogOptions()
-    writer: WriterOptions = WriterOptions()
-    chrome: ChromeOptions = ChromeOptions()
-    parser: ParserOptions = ParserOptions()
+    model_config = ConfigDict(validate_assignment=True)
+
+    log: LogOptions = Field(default_factory=LogOptions)
+    writer: WriterOptions = Field(default_factory=WriterOptions)
+    chrome: ChromeOptions = Field(default_factory=ChromeOptions)
+    parser: ParserOptions = Field(default_factory=ParserOptions)
+    filters: FilterOptions = Field(default_factory=FilterOptions)
     path: Optional[pathlib.Path] = None
     version: str = config_version
-
-    def __init__(self, *args, **kwargs) -> None:
-        def setup_config(model: BaseModel) -> None:
-            """Recursively setup config."""
-            self.Config.validate_assignment = True
-            for field in model.__fields__:
-                attr = getattr(model, field)
-                if isinstance(attr, BaseModel):
-                    setup_config(attr)
-
-        super().__init__(*args, **kwargs)
-        setup_config(self)
 
     def merge_with(self, other_config: Configuration) -> None:
         """Merge configuration with another one."""
         def assign_attributes(model_source: BaseModel,
                               model_target: BaseModel) -> None:
             """Recursively assign new attributes to existing config."""
-            for field in model_source.__fields_set__:
+            for field in model_source.model_fields_set:
                 source_attr = getattr(model_source, field)
                 if not isinstance(source_attr, BaseModel):
                     setattr(model_target, field, source_attr)
@@ -57,7 +48,7 @@ class Configuration(BaseModel):
         if self.path:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.path, 'w', encoding='utf-8') as f:
-                f.write(self.json(exclude={'path'}, ensure_ascii=False, indent=4))
+                f.write(self.model_dump_json(exclude={'path'}, indent=4))
 
     @classmethod
     def load_config(cls, config_path: pathlib.Path | None = None,
@@ -92,7 +83,7 @@ class Configuration(BaseModel):
                 else:
                     config = cls()
             else:
-                config = cls.parse_file(config_path, content_type='json', encoding='utf-8')
+                config = cls.model_validate_json(config_path.read_text(encoding='utf-8'))
                 config.path = config_path
         except (JSONDecodeError, ValidationError) as e:
             warning_msg = 'Не удалось загрузить конфигурацию: '

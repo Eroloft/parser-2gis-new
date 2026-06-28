@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 if GUI_ENABLED:
     import tkinter as tk  # noqa: F811
-    import PySimpleGUI as sg
+    import FreeSimpleGUI as sg
 
 
 def generate_event_handler(func: Callable, with_break: bool = False) -> Callable:
@@ -194,7 +194,7 @@ def invoke_widget_hook(sg: sg, parent_key: str,
     by hooking SG module function PackFormIntoFrame during window finalization.
 
     Args:
-        sg: PySimpleGUI module
+        sg: FreeSimpleGUI module
         parent_key: Parent element key.
         created_widget: Callback with just created parent element as an argument.
 

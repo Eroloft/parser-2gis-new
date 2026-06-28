@@ -54,7 +54,7 @@ class CSVWriter(FileWriter):
         if not self._options.csv.add_rubrics:
             data_mapping.pop('rubrics', None)
 
-        return {
+        full_mapping = {
             **data_mapping,
             **{
                 'point_lat': 'Широта',
@@ -63,6 +63,19 @@ class CSVWriter(FileWriter):
                 'type': 'Тип',
             }
         }
+
+        # Clean preset: keep only essential, human-readable columns. Empty-column
+        # removal later renames single complex columns (e.g. "Телефон 1" -> "Телефон").
+        if self._options.csv.clean:
+            clean_keys = [
+                'name', 'rubrics', 'address', 'city',
+                'general_rating', 'general_review_count',
+                'phone_1', 'whatsapp_1', 'instagram_1', 'telegram_1',
+                'email_1', 'website_1', 'url',
+            ]
+            return {k: v for k, v in full_mapping.items() if k in clean_keys}
+
+        return full_mapping
 
     def _writerow(self, row: dict[str, Any]) -> None:
         """Write a `row` into CSV."""
@@ -76,7 +89,10 @@ class CSVWriter(FileWriter):
 
     def __enter__(self) -> CSVWriter:
         super().__enter__()
-        self._writer = csv.DictWriter(self._file, self._data_mapping.keys())
+        # `extrasaction='ignore'`: `_extract_raw` always fills every possible
+        # field, but the clean preset narrows the column set — ignore the extras.
+        self._writer = csv.DictWriter(self._file, self._data_mapping.keys(),
+                                      extrasaction='ignore')
         self._writer.writerow(self._data_mapping)  # Write header
         self._wrote_count = 0
         return self

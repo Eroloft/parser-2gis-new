@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, NonNegativeInt, PositiveInt
+from pydantic import BaseModel, ConfigDict, NonNegativeInt, PositiveInt
 
 from ..chrome.options import default_memory_limit
 from ..common import floor_to_hundreds
@@ -22,6 +22,8 @@ class ParserOptions(BaseModel):
         use_gc: Use Garbage Collector.
         gc_pages_interval: Run Garbage Collector every N pages (if `use_gc` enabled).
     """
+    model_config = ConfigDict(validate_assignment=True)
+
     skip_404_response: bool = True
     delay_between_clicks: NonNegativeInt = 0
     max_records: PositiveInt = default_max_records()

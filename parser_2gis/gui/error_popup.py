@@ -7,7 +7,7 @@ from ..paths import image_data
 from .utils import ensure_gui_enabled
 
 if GUI_ENABLED:
-    import PySimpleGUI as sg
+    import FreeSimpleGUI as sg
 
 
 @ensure_gui_enabled

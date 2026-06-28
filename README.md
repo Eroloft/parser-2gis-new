@@ -12,6 +12,13 @@
   <a href="https://github.com/interlark/parser-2gis/releases"><img src="https://img.shields.io/github/downloads/interlark/parser-2gis/total.svg" alt="Downloads"/></a>
 </p>
 
+> ### 🍴 Это форк
+> Проект является форком [**parser-2gis**](https://github.com/interlark/parser-2gis)
+> (© Andy Trofimov, лицензия LGPLv3). Оригинальная разработка принадлежит автору;
+> здесь добавлены модификации — см. раздел [«Изменения форка»](#-изменения-форка)
+> и [CHANGELOG](CHANGELOG.md). Это независимый форк, не одобрен и не поддерживается
+> оригинальным автором.
+
 **Parser2GIS** - парсер сайта [2GIS](https://2gis.ru/) с помощью браузера [Google Chrome](https://google.com/chrome).
 
 <img alt="Screenshot" src="https://user-images.githubusercontent.com/20641837/174098241-7c0874aa-e70d-4978-86dc-7fd90af44603.png"/>
@@ -26,26 +33,59 @@
 - 💰 Абсолютно бесплатный
 - 🤖 Успешно обходит анти-бот блокировки на территории РФ
 - 🖥️ Работает под Windows, Linux и MacOS
-- 📄 Три выходных формата: CSV таблица, XLSX таблица и JSON список
+- 📄 Четыре выходных формата: CSV таблица, XLSX таблица, JSON список и **HTML-страница**
 - 🔗 Наличие генератора ссылок по городам и рубрикам
+- 🌐 **Современный веб-интерфейс** в браузере (`parser-2gis --web`)
+- 🧹 **Фильтры результатов:** без франшиз (1 филиал на организацию), только с телефоном / WhatsApp / соцсетями / e-mail / сайтом, по рейтингу и отзывам
+- 💬 **HTML-страница с кнопками WhatsApp и 2GIS** — открыл и сразу пишешь клиентам
+- ✨ **Чистый вид** вывода — только нужные колонки, без мусора
 
 ## 🚀 Установка
 > Для работы парсера необходимо установить браузер [Google Chrome](https://google.com/chrome).
 
-### Установка одним файлом
-
-  Скачать [релиз](https://github.com/interlark/parser-2gis/releases/latest).
-
-### Установка из PyPI
+### Установка этого форка из исходников
   ```bash
-  # CLI
+  git clone <этот-репозиторий>
+  cd parser-2gis
+  python -m venv .venv
+  # CLI + GUI + веб-интерфейс
+  pip install -e ".[gui,web]"
+  ```
+  Запуск: `parser-2gis` (GUI), `parser-2gis --web` (браузер) или `parser-2gis -i <URL> -o out.csv -f csv` (CLI).
+
+  > GUI использует [FreeSimpleGUI](https://pypi.org/project/FreeSimpleGUI/) — поддерживаемый
+  > open-source форк PySimpleGUI (оригинальный пин `PySimpleGUI==4.59.0` был удалён из PyPI).
+
+### Оригинальный проект (PyPI)
+  ```bash
+  # CLI / CLI + GUI оригинального parser-2gis
   pip install parser-2gis
-  # CLI + GUI
   pip install parser-2gis[gui]
   ```
 
 ## 📖 Документация
 Описание работы доступно на [вики](https://github.com/interlark/parser-2gis/wiki).
+
+## 🔧 Изменения форка
+
+Форк сохраняет всю функциональность оригинала и добавляет:
+
+- **Модернизация:** переход на `pydantic` v2, GUI на `FreeSimpleGUI` вместо снятого с PyPI `PySimpleGUI`, поддержка Python 3.12/3.13, обновлённые сборочные зависимости.
+- **Фикс парсинга:** в headless-режиме карта 2GIS (WebGL) не инициализировалась, из-за чего страница отправляла вырождённый viewport и API отвечал `400 «Bound is incorrect»`. Исправлено через новый headless-режим Chrome и принудительный размер вьюпорта.
+- **Фильтры результатов:** дедуп франшиз (1 филиал на организацию), только с телефоном/WhatsApp/соцсетями/e-mail/сайтом, по рейтингу и количеству отзывов. Работают для всех форматов; доступны в CLI (`--filters.*`), десктоп-GUI и веб-интерфейсе.
+- **Чистый вид CSV/XLSX** (`--writer.csv.clean`) — только основные читаемые колонки.
+- **Новый формат HTML** (`-f html`) — самодостаточная страница с карточками и кнопками WhatsApp / звонок / 2GIS / соцсети и поиском.
+- **Улучшенный XLSX** — кликабельные ссылки, авто-ширина колонок, заморозка шапки, автофильтр.
+- **Веб-интерфейс** (`parser-2gis --web`) — современный локальный дашборд: список направлений, фильтры, запуск/стоп, живой прогресс, карточки результатов и экспорт.
+
+Полный список — в [CHANGELOG.md](CHANGELOG.md).
+
+## 📜 Лицензия и авторство
+
+- Оригинальный проект: **parser-2gis** — © **Andy Trofimov** (interlark@gmail.com),
+  https://github.com/interlark/parser-2gis
+- Лицензия: **GNU LGPLv3** (см. [LICENSE](LICENSE)) — сохранена без изменений.
+- Модификации в этом форке распространяются на тех же условиях LGPLv3.
 
 ## 👍 Поддержать проект
 <a href="https://yoomoney.ru/to/4100118362270186" target="_blank">

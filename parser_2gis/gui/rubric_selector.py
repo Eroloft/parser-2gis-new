@@ -11,7 +11,7 @@ from .utils import (ensure_gui_enabled, generate_event_handler,
 
 if GUI_ENABLED:
     import tkinter as tk
-    import PySimpleGUI as sg
+    import FreeSimpleGUI as sg
     from .widgets.sg import RubricsTree
     from .widgets.tk import CustomEntry
 
@@ -114,7 +114,7 @@ def gui_rubric_selector(is_russian: bool = True) -> dict[str, Any] | None:
         ],
     ]
 
-    with invoke_widget_hook(sg.PySimpleGUI, '-COL_SEARCH-', create_search_widget) as get_widget:
+    with invoke_widget_hook(sg, '-COL_SEARCH-', create_search_widget) as get_widget:
         window_title = 'Select rubric' if running_linux() else 'Выбор рубрики'
         window = sg.Window(window_title, layout=layout, finalize=True, auto_size_text=True,
                            font='Any 12', modal=True, keep_on_top=True)

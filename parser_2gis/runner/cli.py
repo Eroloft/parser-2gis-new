@@ -19,7 +19,8 @@ class CLIRunner(AbstractRunner):
     def start(self):
         logger.info('Парсинг запущен.')
         try:
-            with get_writer(self._output_path, self._format, self._config.writer) as writer:
+            with get_writer(self._output_path, self._format, self._config.writer,
+                            self._config.filters) as writer:
                 for url in self._urls:
                     logger.info(f'Парсинг ссылки {url}')
                     with get_parser(url,

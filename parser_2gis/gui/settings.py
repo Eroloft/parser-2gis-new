@@ -10,7 +10,7 @@ from .error_popup import gui_error_popup
 from .utils import ensure_gui_enabled
 
 if GUI_ENABLED:
-    import PySimpleGUI as sg
+    import FreeSimpleGUI as sg
 
 
 @ensure_gui_enabled
@@ -147,6 +147,12 @@ def gui_settings(config: Configuration) -> None:
                                 checkbox_color=sg.theme_input_background_color(), enable_events=True),
                 ],
                 [
+                    sg.Checkbox('Чистый вид (без мусора)', pad=((0, 10), (0, 0)), key='-WRITER.CSV.CLEAN-',
+                                tooltip='Только основные читаемые колонки: без часов работы, индекса, комментариев и дублей',
+                                default=config.writer.csv.clean,
+                                checkbox_color=sg.theme_input_background_color(), enable_events=True),
+                ],
+                [
                     sg.Column([
                         [
                             sg.Column([
@@ -160,6 +166,74 @@ def gui_settings(config: Configuration) -> None:
                                             initial_value=config.writer.csv.columns_per_entity,
                                             tooltip=('Количество колонок для результата с несколькими возможными значениями: '
                                             'Телефон_1, Телефон_2, и т.д.')),
+                                ],
+                            ], element_justification='right', pad=0),
+                        ],
+                    ], expand_x=True, pad=((3, 3), (3, 5))),
+                ],
+            ]),
+        ],
+        [
+            sg.Frame('Фильтры', expand_x=True, pad=((5, 5), (5, 10)), layout=[
+                [
+                    sg.Checkbox('Без франшиз (1 на организацию)', pad=((0, 10), (5, 0)), key='-FILTERS.DEDUP_FRANCHISES-',
+                                tooltip='Оставить один филиал на организацию (убрать дубли-франшизы)',
+                                default=config.filters.dedup_franchises,
+                                checkbox_color=sg.theme_input_background_color(), enable_events=True),
+                ],
+                [
+                    sg.Checkbox('Только с телефоном', pad=((0, 10), (0, 0)), key='-FILTERS.REQUIRE_PHONE-',
+                                tooltip='Оставить только записи с телефоном',
+                                default=config.filters.require_phone,
+                                checkbox_color=sg.theme_input_background_color(), enable_events=True),
+                ],
+                [
+                    sg.Checkbox('Только с WhatsApp', pad=((0, 10), (0, 0)), key='-FILTERS.REQUIRE_WHATSAPP-',
+                                tooltip='Оставить только записи с WhatsApp',
+                                default=config.filters.require_whatsapp,
+                                checkbox_color=sg.theme_input_background_color(), enable_events=True),
+                ],
+                [
+                    sg.Checkbox('Только с соцсетями', pad=((0, 10), (0, 0)), key='-FILTERS.REQUIRE_SOCIAL-',
+                                tooltip='Оставить только записи с соцсетями/мессенджерами',
+                                default=config.filters.require_social,
+                                checkbox_color=sg.theme_input_background_color(), enable_events=True),
+                ],
+                [
+                    sg.Checkbox('Только с e-mail', pad=((0, 10), (0, 0)), key='-FILTERS.REQUIRE_EMAIL-',
+                                tooltip='Оставить только записи с e-mail',
+                                default=config.filters.require_email,
+                                checkbox_color=sg.theme_input_background_color(), enable_events=True),
+                ],
+                [
+                    sg.Checkbox('Только с сайтом', pad=((0, 10), (0, 0)), key='-FILTERS.REQUIRE_WEBSITE-',
+                                tooltip='Оставить только записи с веб-сайтом',
+                                default=config.filters.require_website,
+                                checkbox_color=sg.theme_input_background_color(), enable_events=True),
+                ],
+                [
+                    sg.Column([
+                        [
+                            sg.Column([[sg.Text('Рейтинг от')]], expand_x=True, pad=0),
+                            sg.Column([
+                                [
+                                    sg.Spin([round(x * 0.5, 1) for x in range(11)], size=(5, 1), key='-FILTERS.MIN_RATING-',
+                                            initial_value=config.filters.min_rating,
+                                            tooltip='Оставить только записи с рейтингом не ниже (0 — выкл)'),
+                                ],
+                            ], element_justification='right', pad=0),
+                        ],
+                    ], expand_x=True, pad=((3, 3), (3, 0))),
+                ],
+                [
+                    sg.Column([
+                        [
+                            sg.Column([[sg.Text('Отзывов от')]], expand_x=True, pad=0),
+                            sg.Column([
+                                [
+                                    sg.Spin([0, 5, 10, 25, 50, 100, 250, 500, 1000, 5000], size=(5, 1), key='-FILTERS.MIN_REVIEWS-',
+                                            initial_value=config.filters.min_reviews,
+                                            tooltip='Оставить только записи с количеством отзывов не ниже (0 — выкл)'),
                                 ],
                             ], element_justification='right', pad=0),
                         ],

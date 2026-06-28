@@ -16,7 +16,7 @@ class ArgumentHelpFormatter(argparse.HelpFormatter):
     """Help message formatter which adds default values to argument help."""
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._default_config = Configuration().dict()
+        self._default_config = Configuration().model_dump()
 
     def _get_default_value(self, dest: str) -> Any:
         if dest == 'version':
@@ -98,7 +98,7 @@ def parse_arguments() -> tuple[argparse.Namespace, Configuration]:
     main_parser = arg_parser.add_argument_group(main_parser_name)
     main_parser.add_argument('-i', '--url', nargs='+', default=None, required=main_parser_required, help='URL с выдачей')
     main_parser.add_argument('-o', '--output-path', metavar='PATH', default=None, required=main_parser_required, help='Путь до результирующего файла')
-    main_parser.add_argument('-f', '--format', metavar='{csv,xlsx,json}', choices=['csv', 'xlsx', 'json'], default=None, required=main_parser_required, help='Формат результирующего файла')
+    main_parser.add_argument('-f', '--format', metavar='{csv,xlsx,json,html}', choices=['csv', 'xlsx', 'json', 'html'], default=None, required=main_parser_required, help='Формат результирующего файла')
 
     browser_parser = arg_parser.add_argument_group('Аргументы браузера')
     browser_parser.add_argument('--chrome.binary_path', metavar='PATH', help='Путь до исполняемого файла браузера. Если не указан, то определяется автоматически')
@@ -115,6 +115,17 @@ def parse_arguments() -> tuple[argparse.Namespace, Configuration]:
     csv_parser.add_argument('--writer.csv.remove-empty-columns', metavar='{yes,no}', help='Удалить пустые колонки по завершению работы парсера')
     csv_parser.add_argument('--writer.csv.remove-duplicates', metavar='{yes,no}', help='Удалить повторяющиеся записи по завершению работы парсера')
     csv_parser.add_argument('--writer.csv.join_char', metavar='{; ,% ,...}', help='Разделитель для комплексных значений ячеек Рубрики, Часы работы')
+    csv_parser.add_argument('--writer.csv.clean', metavar='{yes,no}', help='Чистый режим: только основные читаемые колонки (без часов работы, индекса, комментариев и дублей)')
+
+    filter_parser = arg_parser.add_argument_group('Фильтры результатов')
+    filter_parser.add_argument('--filters.dedup-franchises', metavar='{yes,no}', help='Без франшиз: оставить один филиал на организацию')
+    filter_parser.add_argument('--filters.require-phone', metavar='{yes,no}', help='Только записи с телефоном')
+    filter_parser.add_argument('--filters.require-whatsapp', metavar='{yes,no}', help='Только записи с WhatsApp')
+    filter_parser.add_argument('--filters.require-social', metavar='{yes,no}', help='Только записи с соцсетями/мессенджерами')
+    filter_parser.add_argument('--filters.require-email', metavar='{yes,no}', help='Только записи с e-mail')
+    filter_parser.add_argument('--filters.require-website', metavar='{yes,no}', help='Только записи с веб-сайтом')
+    filter_parser.add_argument('--filters.min-rating', metavar='{0,4.5,...}', help='Только записи с рейтингом не ниже указанного (0 - выкл)')
+    filter_parser.add_argument('--filters.min-reviews', metavar='{0,10,...}', help='Только записи с количеством отзывов не ниже указанного (0 - выкл)')
 
     p_parser = arg_parser.add_argument_group('Аргументы парсера')
     p_parser.add_argument('--parser.use-gc', metavar='{yes,no}', help='Включить сборщик мусора - сдерживает быстрое заполнение RAM, уменьшает скорость парсинга')
@@ -128,6 +139,8 @@ def parse_arguments() -> tuple[argparse.Namespace, Configuration]:
     other_parser.add_argument('--writer.encoding', metavar='{utf8,1251,...}', help='Кодировка результирующего файла')
 
     rest_parser = arg_parser.add_argument_group('Служебные аргументы')
+    rest_parser.add_argument('--web', action='store_true', default=False, help='Запустить веб-интерфейс в браузере')
+    rest_parser.add_argument('--web-port', metavar='PORT', type=int, default=8666, help='Порт веб-интерфейса (по умолчанию 8666)')
     rest_parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {version}', help='Показать версию программы и выйти')
     rest_parser.add_argument('-h', '--help', action='help', help='Показать эту справку и выйти')
 
@@ -154,6 +167,12 @@ def main() -> None:
     """Entry point."""
     # Parse command line arguments
     args, command_line_config = parse_arguments()
+
+    # Launch the web dashboard if requested.
+    if getattr(args, 'web', False):
+        from .web import run_server
+        run_server(port=getattr(args, 'web_port', 8666))
+        return
 
     # Run CLI if we specified all required args, otherwise run GUI.
     if args.url is None or args.output_path is None or args.format is None:
