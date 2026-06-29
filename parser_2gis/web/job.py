@@ -101,6 +101,17 @@ class ParseJob:
                 except Exception:
                     pass
 
+    def clear(self) -> bool:
+        """Drop the current results/logs (history is untouched). No-op while running."""
+        with self._lock:
+            if self.running:
+                return False
+            self.collector = None
+            self.logs = []
+            self.error = None
+            self.status = 'idle'
+            return True
+
     def _run(self, config: Configuration, urls: list[str]) -> None:
         handler = _ListLogHandler(self.logs)
         logger.addHandler(handler)

@@ -73,6 +73,9 @@
   .dl-label{font-size:13px;color:var(--muted);font-weight:600}
   .dl-fmt{background:#0f172a;color:#fff;padding:9px 13px;font-size:12.5px;font-weight:650;border-radius:9px}
   .dl-fmt:hover:not(:disabled){filter:brightness(1.3)}
+  .btn-clear{background:#fff;color:var(--muted);border:1px solid var(--line);padding:9px 12px;
+    font-size:12.5px;font-weight:600;border-radius:9px}
+  .btn-clear:hover:not(:disabled){background:#fef2f2;color:var(--danger);border-color:#f3c6c6}
   .content{padding:clamp(16px,3vw,28px);min-width:0}
   details.log{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
     margin-bottom:18px;box-shadow:var(--shadow)}
@@ -299,6 +302,7 @@
         <button class="dl-fmt" data-fmt="json" disabled>JSON</button>
         <button class="dl-fmt" data-fmt="html" disabled>HTML</button>
       </div>
+      <button class="btn-clear" id="clear" title="Очистить результаты (останутся в Истории)" disabled>✕ Очистить</button>
     </div>
     <div class="content">
       <details class="log" id="logwrap" style="display:none">
@@ -434,11 +438,20 @@
     fetch('/api/stop',{method:'POST'}).finally(function(){setTimeout(function(){$('stop').disabled=false},800)});
   });
 
-  function dlEnabled(on){[].forEach.call(document.querySelectorAll('.dl-fmt'),function(b){b.disabled=!on;});}
+  function dlEnabled(on){
+    [].forEach.call(document.querySelectorAll('.dl-fmt'),function(b){b.disabled=!on;});
+    $('clear').disabled=!on;
+  }
   $('dlbar').addEventListener('click',function(e){
     var b=e.target.closest('.dl-fmt'); if(!b||b.disabled)return;
     var base=histId?('/api/history/'+histId+'/download'):'/api/download';
     window.location=base+'?format='+encodeURIComponent(b.getAttribute('data-fmt'));
+  });
+  $('clear').addEventListener('click',function(){
+    if($('clear').disabled)return;
+    if(!histId){fetch('/api/clear',{method:'POST'}).catch(function(){});}
+    records=[]; histId=null; renderGrid(); dlEnabled(false);
+    $('count').textContent=''; $('search').value='';
   });
 
   // ---- Parse history ----

@@ -138,6 +138,10 @@ def create_app():
         job.stop()
         return jsonify({'ok': True})
 
+    @app.route('/api/clear', methods=['POST'])
+    def api_clear():
+        return jsonify({'ok': job.clear()})
+
     @app.route('/api/status')
     def api_status():
         cursor = request.args.get('cursor', default=0, type=int)
