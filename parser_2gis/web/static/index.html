@@ -146,6 +146,16 @@
   .field a:hover{text-decoration:underline}
   .btn-gen{background:#0f172a;color:#fff;padding:10px 14px}
   .btn-gen:hover{filter:brightness(1.2)}
+  /* WhatsApp message templates */
+  .waList{display:flex;flex-direction:column;gap:6px}
+  .waRow{display:flex;gap:6px;align-items:center}
+  .waTpl{flex:1;width:auto;min-width:0}
+  .waDel{flex:none;width:36px;min-width:36px;padding:0;font-size:16px;line-height:1;cursor:pointer;
+    color:var(--danger);background:#fff;border:1px solid var(--line);border-radius:8px}
+  .waDel:hover{background:#fef2f2;border-color:#f3c6c6}
+  .btn-add{align-self:flex-start;margin-top:4px;background:#eef2ff;color:var(--primary);
+    border:1px solid #d8ddfb;padding:8px 12px;font-size:12.5px;font-weight:600;border-radius:9px}
+  .btn-add:hover{background:#e3e8fe}
   /* Parse history list */
   .histList{display:flex;flex-direction:column;gap:7px}
   .histItem{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;
@@ -224,8 +234,10 @@
             <option value="web">WhatsApp Web (в браузере)</option>
             <option value="app">Приложение / телефон (wa.me)</option>
           </select></label>
-        <label class="field"><span>Шаблоны сообщений — по одному на строку</span>
-          <textarea id="waTexts" placeholder="Здравствуйте! Хотели бы предложить сотрудничество.&#10;Добрый день! Можно обсудить размещение рекламы у вас?&#10;Приветствуем! Есть интересное предложение для вашего заведения."></textarea></label>
+        <div class="field"><span>Шаблоны сообщений</span>
+          <div id="waList" class="waList"></div>
+          <button type="button" class="btn-add" id="waAdd">+ Добавить шаблон</button>
+        </div>
         <div class="hint">При клике на «WhatsApp» в карточке откроется чат с подставленным <b>случайным</b> шаблоном. Несколько шаблонов → каждому заведению уходит свой вариант.</div>
       </div>
     </details>
@@ -367,7 +379,18 @@
   }
 
   function waTemplates(){
-    return $('waTexts').value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
+    return [].map.call($('waList').querySelectorAll('.waTpl'),function(i){return i.value.trim();}).filter(Boolean);
+  }
+  function waValues(){
+    return [].map.call($('waList').querySelectorAll('.waTpl'),function(i){return i.value;});
+  }
+  function saveWa(){try{localStorage.setItem('wa_texts_v2',JSON.stringify(waValues()));}catch(_){}}
+  function addWaRow(value){
+    var row=document.createElement('div'); row.className='waRow';
+    row.innerHTML='<input type="text" class="waTpl" placeholder="Текст сообщения…">'+
+      '<button type="button" class="waDel" title="Удалить">&times;</button>';
+    $('waList').appendChild(row);
+    row.querySelector('.waTpl').value=value||'';
   }
   function waUrl(number){
     var tpls=waTemplates();
@@ -537,12 +560,24 @@
     var num=a.getAttribute('data-wa'); if(num) window.open(waUrl(num),'_blank','noopener');
   });
   // Persist WhatsApp settings across reloads.
-  try{
-    var sm=localStorage.getItem('wa_mode'); if(sm)$('waMode').value=sm;
-    var st=localStorage.getItem('wa_texts'); if(st!==null)$('waTexts').value=st;
-  }catch(_){}
+  try{var sm=localStorage.getItem('wa_mode'); if(sm)$('waMode').value=sm;}catch(_){}
   $('waMode').addEventListener('change',function(){try{localStorage.setItem('wa_mode',$('waMode').value);}catch(_){}});
-  $('waTexts').addEventListener('input',function(){try{localStorage.setItem('wa_texts',$('waTexts').value);}catch(_){}});
+  (function initWaTemplates(){
+    var saved=[];
+    try{saved=JSON.parse(localStorage.getItem('wa_texts_v2')||'[]');}catch(_){}
+    if(!saved.length){try{var old=localStorage.getItem('wa_texts'); if(old)saved=old.split('\n');}catch(_){}}
+    if(!saved.length)saved=[''];
+    saved.forEach(function(v){addWaRow(v);});
+  })();
+  $('waAdd').addEventListener('click',function(){
+    addWaRow(''); var r=$('waList').querySelectorAll('.waTpl'); r[r.length-1].focus(); saveWa();});
+  $('waList').addEventListener('input',saveWa);
+  $('waList').addEventListener('click',function(e){
+    var d=e.target.closest('.waDel'); if(!d)return;
+    if($('waList').querySelectorAll('.waRow').length>1)d.closest('.waRow').remove();
+    else d.closest('.waRow').querySelector('.waTpl').value='';
+    saveWa();
+  });
 
   // ---- Link generator ----
   var GEN={cities:[],rubrics:[],loaded:false,rubCode:'',rubLabel:''};
