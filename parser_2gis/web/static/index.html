@@ -144,8 +144,10 @@
     /* Drop the scroll container around the sidebar so native <select> pickers
        open correctly on tablets/phones. */
     aside{position:static;max-height:none;overflow:visible;border-right:none;border-bottom:1px solid var(--line)}
-    /* 16px prevents iOS auto-zoom; 44px meets touch-target guidance. */
-    textarea,input:not([type=checkbox]),select,.msel-btn{font-size:16px;min-height:44px}
+    /* 16px prevents iOS auto-zoom; 44px meets touch-target guidance.
+       textarea keeps its taller height so multi-line templates stay visible. */
+    input:not([type=checkbox]),select,.msel-btn{font-size:16px;min-height:44px}
+    textarea{font-size:16px}
     .check{padding:9px 9px} .check input{width:20px;height:20px}
     /* Render the cities panel inline on touch instead of an absolute overlay. */
     .msel-panel{position:static;box-shadow:none;margin-top:6px}
@@ -222,12 +224,7 @@
     <details class="sect" id="params">
       <summary>📋 Параметры</summary>
       <div class="sectbody">
-        <div class="rowmini">
-          <label class="field"><span>Макс. записей</span><input type="number" id="maxrec" min="1" step="1" value="50"></label>
-          <label class="field"><span>Формат файла</span>
-            <select id="format"><option value="csv">CSV</option><option value="xlsx">XLSX</option>
-              <option value="json">JSON</option><option value="html">HTML</option></select></label>
-        </div>
+        <label class="field"><span>Макс. записей с одного URL</span><input type="number" id="maxrec" min="1" step="1" value="50"></label>
         <label class="check"><input type="checkbox" id="clean" checked> Чистый вид (без мусора)</label>
         <label class="check"><input type="checkbox" id="headless" checked> Скрытый браузер (headless)</label>
       </div>
@@ -268,6 +265,10 @@
       <span id="count"></span>
       <input id="search" type="search" placeholder="Поиск в результатах…" autocomplete="off">
       <div class="dl">
+        <select id="format" title="Формат файла">
+          <option value="csv">CSV</option><option value="xlsx">XLSX</option>
+          <option value="json">JSON</option><option value="html">HTML</option>
+        </select>
         <button class="btn-dl" id="download" disabled>Скачать</button>
       </div>
     </div>
