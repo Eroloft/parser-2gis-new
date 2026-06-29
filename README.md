@@ -6,10 +6,10 @@
 <h1 align="center">Parser2GIS</h1>
 
 <p align="center">
-  <a href="https://github.com/interlark/parser-2gis/actions/workflows/tests.yml"><img src="https://github.com/interlark/parser-2gis/actions/workflows/tests.yml/badge.svg" alt="Tests"/></a>
-  <a href="https://pypi.org/project/parser-2gis"><img src="https://badgen.net/pypi/v/parser-2gis" alt="PyPi version"/></a>
-  <a href="https://pypi.org/project/parser-2gis"><img src="https://badgen.net/pypi/python/parser-2gis" alt="Supported Python versions"/></a>
-  <a href="https://github.com/interlark/parser-2gis/releases"><img src="https://img.shields.io/github/downloads/interlark/parser-2gis/total.svg" alt="Downloads"/></a>
+  <a href="https://github.com/Eroloft/parser-2gis-new/actions/workflows/tests.yml"><img src="https://github.com/Eroloft/parser-2gis-new/actions/workflows/tests.yml/badge.svg" alt="Tests"/></a>
+  <img src="https://img.shields.io/badge/python-3.8%20%E2%80%93%203.13-blue" alt="Поддерживаемые версии Python"/>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-LGPLv3-green" alt="Лицензия: LGPLv3"/></a>
+  <a href="https://github.com/interlark/parser-2gis"><img src="https://img.shields.io/badge/fork%20of-interlark%2Fparser--2gis-orange" alt="Форк interlark/parser-2gis"/></a>
 </p>
 
 > ### 🍴 Это форк
@@ -20,6 +20,8 @@
 > оригинальным автором.
 
 **Parser2GIS** - парсер сайта [2GIS](https://2gis.ru/) с помощью браузера [Google Chrome](https://google.com/chrome).
+
+<img alt="Скриншот веб-дашборда Parser2GIS" src="docs/screenshot.png"/>
 
 ## ℹ️ Описание
 
@@ -87,8 +89,3 @@
   https://github.com/interlark/parser-2gis
 - Лицензия: **GNU LGPLv3** (см. [LICENSE](LICENSE)) — сохранена без изменений.
 - Модификации в этом форке распространяются на тех же условиях LGPLv3.
-
-## 👍 Поддержать проект
-<a href="https://yoomoney.ru/to/4100118362270186" target="_blank">
-  <img alt="Yoomoney Donate" src="https://github.com/interlark/parser-2gis/assets/20641837/e875e948-0d69-4ed5-804c-8a1736ab0c9d" width="150">
-</a>
