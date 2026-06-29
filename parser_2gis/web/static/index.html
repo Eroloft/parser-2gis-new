@@ -316,7 +316,6 @@
         <option value="rating_asc">Рейтинг ↑</option>
         <option value="reviews_desc">Отзывов ↓</option>
         <option value="reviews_asc">Отзывов ↑</option>
-        <option value="wa_first">Сначала с WhatsApp</option>
         <option value="rubric_asc">По рубрике А–Я</option>
       </select>
       <div class="dl" id="dlbar">
@@ -426,7 +425,6 @@
     var name=function(r){return (r.name||'').toLowerCase();};
     var rub=function(r){return ((r.rubrics&&r.rubrics[0])||'').toLowerCase();};
     var num=function(v){return (typeof v==='number')?v:-1;};
-    var hasWa=function(r){return (r.contacts&&r.contacts.whatsapp)?1:0;};
     var a=arr.slice();
     if(s==='name_asc')a.sort(function(x,y){return name(x).localeCompare(name(y),'ru');});
     else if(s==='name_desc')a.sort(function(x,y){return name(y).localeCompare(name(x),'ru');});
@@ -434,7 +432,6 @@
     else if(s==='rating_asc')a.sort(function(x,y){return num(x.rating)-num(y.rating);});
     else if(s==='reviews_desc')a.sort(function(x,y){return num(y.review_count)-num(x.review_count);});
     else if(s==='reviews_asc')a.sort(function(x,y){return num(x.review_count)-num(y.review_count);});
-    else if(s==='wa_first')a.sort(function(x,y){return hasWa(y)-hasWa(x) || name(x).localeCompare(name(y),'ru');});
     else if(s==='rubric_asc')a.sort(function(x,y){return rub(x).localeCompare(rub(y),'ru') || name(x).localeCompare(name(y),'ru');});
     return a;
   }
