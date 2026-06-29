@@ -189,6 +189,20 @@
       </div>
     </details>
 
+    <details class="sect" id="wa">
+      <summary>💬 WhatsApp-рассылка</summary>
+      <div class="sectbody">
+        <label class="field"><span>Открывать в</span>
+          <select id="waMode">
+            <option value="web">WhatsApp Web (в браузере)</option>
+            <option value="app">Приложение / телефон (wa.me)</option>
+          </select></label>
+        <label class="field"><span>Шаблоны сообщений — по одному на строку</span>
+          <textarea id="waTexts" placeholder="Здравствуйте! Хотели бы предложить сотрудничество.&#10;Добрый день! Можно обсудить размещение рекламы у вас?&#10;Приветствуем! Есть интересное предложение для вашего заведения."></textarea></label>
+        <div class="hint">При клике на «WhatsApp» в карточке откроется чат с подставленным <b>случайным</b> шаблоном. Несколько шаблонов → каждому заведению уходит свой вариант.</div>
+      </div>
+    </details>
+
     <details class="sect" id="filt">
       <summary>🧹 Фильтры</summary>
       <div class="sectbody">
@@ -307,9 +321,21 @@
     var m=map[s]||map.idle; if(m[0])pill.classList.add(m[0]); t.textContent=m[1];
   }
 
+  function waTemplates(){
+    return $('waTexts').value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
+  }
+  function waUrl(number){
+    var tpls=waTemplates();
+    var text=tpls.length?tpls[Math.floor(Math.random()*tpls.length)]:'';
+    if($('waMode').value==='web'){
+      return 'https://web.whatsapp.com/send?phone='+number+(text?('&text='+encodeURIComponent(text)):'');
+    }
+    return 'https://wa.me/'+number+(text?('?text='+encodeURIComponent(text)):'');
+  }
+
   function renderCard(r){
     var c=r.contacts||{}, b=[];
-    if(c.whatsapp) b.push('<a class="b wa" target="_blank" rel="noopener" href="'+esc(c.whatsapp)+'">WhatsApp</a>');
+    if(c.whatsapp) b.push('<a class="b wa" href="#" data-wa="'+esc(digits(c.whatsapp))+'">WhatsApp</a>');
     if(c.phone) b.push('<a class="b" href="tel:'+digits(c.phone)+'">📞 '+esc(c.phone)+'</a>');
     if(c.telegram) b.push('<a class="b tg" target="_blank" rel="noopener" href="'+esc(c.telegram)+'">Telegram</a>');
     if(c.instagram) b.push('<a class="b ig" target="_blank" rel="noopener" href="'+esc(c.instagram)+'">Instagram</a>');
@@ -384,6 +410,20 @@
   });
 
   $('search').addEventListener('input',renderGrid);
+
+  // WhatsApp button: open chosen mode (Web / app) with a random message template.
+  $('grid').addEventListener('click',function(e){
+    var a=e.target.closest('.b.wa'); if(!a)return;
+    e.preventDefault();
+    var num=a.getAttribute('data-wa'); if(num) window.open(waUrl(num),'_blank','noopener');
+  });
+  // Persist WhatsApp settings across reloads.
+  try{
+    var sm=localStorage.getItem('wa_mode'); if(sm)$('waMode').value=sm;
+    var st=localStorage.getItem('wa_texts'); if(st!==null)$('waTexts').value=st;
+  }catch(_){}
+  $('waMode').addEventListener('change',function(){try{localStorage.setItem('wa_mode',$('waMode').value);}catch(_){}});
+  $('waTexts').addEventListener('input',function(){try{localStorage.setItem('wa_texts',$('waTexts').value);}catch(_){}});
 
   // ---- Link generator ----
   var GEN={cities:[],rubrics:[],loaded:false};
