@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="kk">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -27,6 +27,11 @@
   .brand .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--primary),#8b5cf6);
     display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px}
   .brand h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.01em}
+  .langbtns{margin-left:auto;display:flex;gap:3px}
+  .langbtns button{background:none;border:1px solid transparent;border-radius:6px;padding:3px;
+    line-height:0;cursor:pointer;opacity:.5;filter:grayscale(.5);display:flex}
+  .langbtns button.on{opacity:1;filter:none;border-color:var(--line);background:#fff;box-shadow:var(--shadow)}
+  .langbtns svg{display:block}
   .group{display:flex;flex-direction:column;gap:9px}
   .group>label.h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
   textarea,input:not([type=checkbox]),select{width:100%;border:1px solid var(--line);border-radius:10px;
@@ -208,103 +213,108 @@
 <body>
 <div class="app">
   <aside>
-    <div class="brand"><div class="logo">2G</div><h1>Parser 2GIS</h1></div>
+    <div class="brand"><div class="logo">2G</div><h1>Parser 2GIS</h1>
+      <div class="langbtns" id="langbtns">
+        <button data-lang="kk" title="Қазақша"><svg width="24" height="16" viewBox="0 0 24 16"><rect width="24" height="16" rx="2" fill="#00AFCA"/><circle cx="12" cy="7" r="3.4" fill="#FEC50C"/><rect x="4" y="12.2" width="16" height="1.4" rx=".7" fill="#FEC50C"/></svg></button>
+        <button data-lang="ru" title="Русский"><svg width="24" height="16" viewBox="0 0 24 16"><rect width="24" height="16" rx="2" fill="#fff" stroke="#e6e8ef" stroke-width=".7"/><rect x=".5" y="5.5" width="23" height="5.3" fill="#0039A6"/><rect x=".5" y="10.8" width="23" height="4.7" rx="2" fill="#D52B1E"/></svg></button>
+      </div>
+    </div>
 
     <div class="group">
-      <label class="h" for="urls">Направления</label>
+      <label class="h" for="urls" data-i18n="urls_label">Сілтемелер</label>
       <textarea id="urls" placeholder="https://2gis.kz/almaty/search/Кафе&#10;https://2gis.ru/moscow/search/Аптеки"></textarea>
-      <div class="hint">По одной ссылке 2GIS на строку. Можно несколько городов и рубрик.</div>
+      <div class="hint" data-i18n="urls_hint">Әр жолда бір 2GIS сілтемесі. Бірнеше қала және айдар болуы мүмкін.</div>
     </div>
 
     <details class="sect" id="gen">
-      <summary>🔗 Создать ссылки</summary>
+      <summary data-i18n="gen_title">🔗 Сілтеме жасау</summary>
       <div class="sectbody">
-        <label class="field"><span>Страна</span><select id="genCountry"></select></label>
+        <label class="field"><span data-i18n="country">Ел</span><select id="genCountry"></select></label>
         <div class="field">
-          <span>Города</span>
+          <span data-i18n="cities">Қалалар</span>
           <div class="msel" id="genCitiesWrap">
-            <button type="button" class="msel-btn" id="genCitiesBtn">Выберите города</button>
+            <button type="button" class="msel-btn" id="genCitiesBtn">Қалаларды таңдаңыз</button>
             <div class="msel-panel" id="genCitiesPanel">
-              <div class="msel-tools"><a href="#" id="genAll">выбрать все</a> · <a href="#" id="genNone">сбросить</a></div>
+              <div class="msel-tools"><a href="#" id="genAll" data-i18n="select_all">барлығын таңдау</a> · <a href="#" id="genNone" data-i18n="reset">тазалау</a></div>
               <div class="genCities" id="genCities"></div>
             </div>
           </div>
         </div>
-        <label class="field"><span>Запрос</span>
-          <input type="text" id="genQuery" placeholder="Начните печатать: Кафе, Аптеки…" autocomplete="off" list="genQueryList">
+        <label class="field"><span data-i18n="query">Сұраныс</span>
+          <input type="text" id="genQuery" data-i18n-ph="query_ph" placeholder="Тере бастаңыз: Кафе, Дәріхана…" autocomplete="off" list="genQueryList">
           <datalist id="genQueryList"></datalist>
         </label>
-        <div class="field"><span>Рубрика (необязательно)</span>
+        <div class="field"><span data-i18n="rubric">Айдар (міндетті емес)</span>
           <div class="msel" id="genRubWrap">
-            <button type="button" class="msel-btn" id="genRubBtn">Без рубрики</button>
+            <button type="button" class="msel-btn" id="genRubBtn">Айдарсыз</button>
             <div class="msel-panel" id="genRubPanel">
-              <input type="text" id="genRubricSearch" placeholder="Поиск рубрики…" autocomplete="off">
+              <input type="text" id="genRubricSearch" data-i18n-ph="rubric_search_ph" placeholder="Айдарды іздеу…" autocomplete="off">
               <div class="genRubList" id="genRubList"></div>
             </div>
           </div>
         </div>
-        <button type="button" class="btn-gen" id="genAdd">Добавить ссылки</button>
+        <button type="button" class="btn-gen" id="genAdd">Сілтемелерді қосу</button>
       </div>
     </details>
 
     <details class="sect" id="wa">
-      <summary>💬 WhatsApp-рассылка</summary>
+      <summary data-i18n="wa_title">💬 WhatsApp-тарату</summary>
       <div class="sectbody">
-        <label class="field"><span>Открывать в</span>
+        <label class="field"><span data-i18n="wa_mode_label">Қайда ашу</span>
           <select id="waMode">
-            <option value="web">WhatsApp Web (в браузере)</option>
-            <option value="app">Приложение / телефон (wa.me)</option>
+            <option value="web" data-i18n="wa_web">WhatsApp Web (браузерде)</option>
+            <option value="app" data-i18n="wa_app">Қосымша / телефон (wa.me)</option>
           </select></label>
-        <div class="field"><span>Шаблоны сообщений</span>
+        <div class="field"><span data-i18n="wa_templates">Хабарлама үлгілері</span>
           <div id="waList" class="waList"></div>
-          <button type="button" class="btn-add" id="waAdd">+ Добавить шаблон</button>
+          <button type="button" class="btn-add" id="waAdd" data-i18n="wa_add">+ Үлгі қосу</button>
         </div>
-        <div class="hint">При клике на «WhatsApp» в карточке откроется чат с подставленным <b>случайным</b> шаблоном. Несколько шаблонов → каждому заведению уходит свой вариант.</div>
+        <div class="hint" data-i18n="wa_hint">Карточкадағы «WhatsApp» басқанда чат кездейсоқ үлгімен ашылады. Бірнеше үлгі → әр мекемеге өз нұсқасы.</div>
       </div>
     </details>
 
     <details class="sect" id="filt">
-      <summary>🧹 Фильтры</summary>
+      <summary data-i18n="filters_title">🧹 Сүзгілер</summary>
       <div class="sectbody">
-        <label class="check"><input type="checkbox" id="f_dedup"> Без франшиз (1 на организацию)</label>
-        <label class="check"><input type="checkbox" id="f_phone"> Только с телефоном</label>
-        <label class="check"><input type="checkbox" id="f_wa"> Только с WhatsApp</label>
-        <label class="check"><input type="checkbox" id="f_social"> Только с соцсетями</label>
-        <label class="check"><input type="checkbox" id="f_email"> Только с e-mail</label>
-        <label class="check"><input type="checkbox" id="f_site"> Только с сайтом</label>
+        <label class="check"><input type="checkbox" id="f_dedup"> <span data-i18n="f_dedup">Франшизасыз (ұйымға 1)</span></label>
+        <label class="check"><input type="checkbox" id="f_phone"> <span data-i18n="f_phone">Тек телефоны барлар</span></label>
+        <label class="check"><input type="checkbox" id="f_wa"> <span data-i18n="f_wa">Тек WhatsApp барлар</span></label>
+        <label class="check"><input type="checkbox" id="f_social"> <span data-i18n="f_social">Тек әлеуметтік желілермен</span></label>
+        <label class="check"><input type="checkbox" id="f_email"> <span data-i18n="f_email">Тек e-mail барлар</span></label>
+        <label class="check"><input type="checkbox" id="f_site"> <span data-i18n="f_site">Тек сайты барлар</span></label>
         <div class="rowmini">
-          <label class="field"><span>Рейтинг от</span><input type="number" id="f_rating" min="0" max="5" step="0.1" value="0"></label>
-          <label class="field"><span>Отзывов от</span><input type="number" id="f_reviews" min="0" step="1" value="0"></label>
+          <label class="field"><span data-i18n="rating_from">Рейтинг (бастап)</span><input type="number" id="f_rating" min="0" max="5" step="0.1" value="0"></label>
+          <label class="field"><span data-i18n="reviews_from">Пікірлер (бастап)</span><input type="number" id="f_reviews" min="0" step="1" value="0"></label>
         </div>
       </div>
     </details>
 
     <details class="sect" id="params">
-      <summary>📋 Параметры</summary>
+      <summary data-i18n="params_title">📋 Параметрлер</summary>
       <div class="sectbody">
-        <label class="field"><span>Макс. записей с одного URL</span><input type="number" id="maxrec" min="1" step="1" value="50"></label>
-        <label class="check"><input type="checkbox" id="clean" checked> Чистый вид (без мусора)</label>
-        <label class="check"><input type="checkbox" id="headless" checked> Скрытый браузер (headless)</label>
+        <label class="field"><span data-i18n="maxrec">Бір URL-ден макс. жазба</span><input type="number" id="maxrec" min="1" step="1" value="50"></label>
+        <label class="check"><input type="checkbox" id="clean" checked> <span data-i18n="clean">Таза көрініс (қоқыссыз)</span></label>
+        <label class="check"><input type="checkbox" id="headless" checked> <span data-i18n="headless">Жасырын браузер (headless)</span></label>
       </div>
     </details>
 
     <details class="sect" id="adv">
-      <summary>⚙️ Расширенные настройки</summary>
+      <summary data-i18n="adv_title">⚙️ Қосымша баптаулар</summary>
       <div class="sectbody">
-        <label class="check"><input type="checkbox" id="a_images" checked> Отключить изображения (быстрее)</label>
-        <label class="check"><input type="checkbox" id="a_max"> Запускать браузер развёрнутым</label>
-        <label class="check"><input type="checkbox" id="a_skip404" checked> Точные совпадения (пропуск «не найдено»)</label>
-        <label class="check"><input type="checkbox" id="a_rubrics" checked> Колонка «Рубрики»</label>
-        <label class="check"><input type="checkbox" id="a_comments" checked> Комментарии в ячейках (часы работы и т.д.)</label>
-        <label class="check"><input type="checkbox" id="a_rmempty" checked> Удалять пустые колонки</label>
-        <label class="check"><input type="checkbox" id="a_rmdup" checked> Удалять дубликаты</label>
+        <label class="check"><input type="checkbox" id="a_images" checked> <span data-i18n="a_images">Суреттерді өшіру (жылдамырақ)</span></label>
+        <label class="check"><input type="checkbox" id="a_max"> <span data-i18n="a_max">Браузерді жайып ашу</span></label>
+        <label class="check"><input type="checkbox" id="a_skip404" checked> <span data-i18n="a_skip404">Дәл сәйкестіктер («табылмады» өткізу)</span></label>
+        <label class="check"><input type="checkbox" id="a_rubrics" checked> <span data-i18n="a_rubrics">«Айдарлар» бағаны</span></label>
+        <label class="check"><input type="checkbox" id="a_comments" checked> <span data-i18n="a_comments">Ұяшықтардағы түсініктемелер (жұмыс уақыты т.б.)</span></label>
+        <label class="check"><input type="checkbox" id="a_rmempty" checked> <span data-i18n="a_rmempty">Бос бағандарды жою</span></label>
+        <label class="check"><input type="checkbox" id="a_rmdup" checked> <span data-i18n="a_rmdup">Қайталануларды жою</span></label>
         <div class="rowmini">
-          <label class="field"><span>Задержка кликов, мс</span><input type="number" id="a_delay" min="0" step="50" value="0"></label>
-          <label class="field"><span>Колонок на поле</span><input type="number" id="a_cols" min="1" max="5" value="3"></label>
+          <label class="field"><span data-i18n="a_delay">Басу кідірісі, мс</span><input type="number" id="a_delay" min="0" step="50" value="0"></label>
+          <label class="field"><span data-i18n="a_cols">Өріске баған саны</span><input type="number" id="a_cols" min="1" max="5" value="3"></label>
         </div>
         <div class="rowmini">
-          <label class="field"><span>Лимит RAM, МБ</span><input type="number" id="a_mem" min="512" step="512" placeholder="авто"></label>
-          <label class="field"><span>Кодировка</span><select id="a_enc">
+          <label class="field"><span data-i18n="a_mem">RAM шегі, МБ</span><input type="number" id="a_mem" min="512" step="512" placeholder="авто"></label>
+          <label class="field"><span data-i18n="a_enc">Кодтау</span><select id="a_enc">
             <option value="utf-8-sig">UTF-8 (Excel)</option><option value="utf-8">UTF-8</option>
             <option value="cp1251">Windows-1251</option></select></label>
         </div>
@@ -312,32 +322,32 @@
     </details>
 
     <details class="sect" id="hist">
-      <summary>🕘 История парсинга</summary>
+      <summary data-i18n="hist_title">🕘 Парсинг тарихы</summary>
       <div class="sectbody">
-        <div id="histList" class="histList"><div class="hint">Пока пусто. Завершённые парсинги сохранятся здесь.</div></div>
+        <div id="histList" class="histList"><div class="hint" data-i18n="hist_empty">Әзірге бос. Аяқталған парсингтер осында сақталады.</div></div>
       </div>
     </details>
 
     <div class="actions-bar">
-      <button class="btn-run" id="run">Запустить</button>
-      <button class="btn-stop" id="stop" style="display:none">Остановить</button>
+      <button class="btn-run" id="run" data-i18n="run">Бастау</button>
+      <button class="btn-stop" id="stop" style="display:none" data-i18n="stop">Тоқтату</button>
     </div>
   </aside>
 
   <main>
     <div class="topbar">
-      <span class="pill" id="pill"><span class="dot"></span><span id="pilltext">Готов</span></span>
+      <span class="pill" id="pill"><span class="dot"></span><span id="pilltext">Дайын</span></span>
       <span id="count"></span>
-      <input id="search" type="search" placeholder="Поиск в результатах…" autocomplete="off">
-      <select id="sort" class="sortsel" title="Сортировка">
-        <option value="default">Без сортировки</option>
-        <option value="name_asc">Название А–Я</option>
-        <option value="name_desc">Название Я–А</option>
-        <option value="rating_desc">Рейтинг ↓</option>
-        <option value="rating_asc">Рейтинг ↑</option>
-        <option value="reviews_desc">Отзывов ↓</option>
-        <option value="reviews_asc">Отзывов ↑</option>
-        <option value="rubric_asc">По рубрике А–Я</option>
+      <input id="search" type="search" data-i18n-ph="search_ph" placeholder="Нәтижелерден іздеу…" autocomplete="off">
+      <select id="sort" class="sortsel" data-i18n-title="sort_title" title="Сұрыптау">
+        <option value="default" data-i18n="sort_default">Сұрыптаусыз</option>
+        <option value="name_asc" data-i18n="sort_name_asc">Атауы А–Я</option>
+        <option value="name_desc" data-i18n="sort_name_desc">Атауы Я–А</option>
+        <option value="rating_desc" data-i18n="sort_rating_desc">Рейтинг ↓</option>
+        <option value="rating_asc" data-i18n="sort_rating_asc">Рейтинг ↑</option>
+        <option value="reviews_desc" data-i18n="sort_reviews_desc">Пікірлер ↓</option>
+        <option value="reviews_asc" data-i18n="sort_reviews_asc">Пікірлер ↑</option>
+        <option value="rubric_asc" data-i18n="sort_rubric">Айдар бойынша А–Я</option>
       </select>
       <div class="viewbtns" id="viewbtns">
         <button data-cols="1" title="1 колонка"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2" fill="currentColor"/></svg></button>
@@ -345,21 +355,21 @@
         <button data-cols="3" title="3 колонки"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.5" y="2" width="3.2" height="12" rx="1" fill="currentColor"/><rect x="6.4" y="2" width="3.2" height="12" rx="1" fill="currentColor"/><rect x="11.3" y="2" width="3.2" height="12" rx="1" fill="currentColor"/></svg></button>
       </div>
       <div class="dl" id="dlbar">
-        <span class="dl-label">Скачать:</span>
+        <span class="dl-label" data-i18n="dl_label">Жүктеу:</span>
         <button class="dl-fmt" data-fmt="html" disabled>HTML</button>
         <button class="dl-fmt" data-fmt="csv" disabled>CSV</button>
         <button class="dl-fmt" data-fmt="xlsx" disabled>XLSX</button>
         <button class="dl-fmt" data-fmt="json" disabled>JSON</button>
       </div>
-      <button class="btn-clear" id="clear" title="Очистить результаты (останутся в Истории)" disabled>✕ Очистить</button>
+      <button class="btn-clear" id="clear" data-i18n="clear" data-i18n-title="clear_title" title="Нәтижелерді тазалау (Тарихта қалады)" disabled>✕ Тазалау</button>
     </div>
     <div class="content">
       <details class="log" id="logwrap" style="display:none">
-        <summary>Журнал парсинга</summary>
+        <summary data-i18n="log_title">Парсинг журналы</summary>
         <div id="logbox"></div>
       </details>
       <div class="grid" id="grid"></div>
-      <div class="empty" id="empty"><div class="big">🔎</div>Укажите направления слева и нажмите «Запустить».</div>
+      <div class="empty" id="empty"><div class="big">🔎</div><span data-i18n="empty_start">Сол жақта сілтемелерді көрсетіп, «Бастау» басыңыз.</span></div>
     </div>
   </main>
 </div>
@@ -368,6 +378,94 @@
 (function(){
   var $=function(id){return document.getElementById(id)};
   var poll=null, cursor=0, records=[], histId=null;
+
+  // ---- i18n (Қазақша default, Русский) ----
+  var T={
+    kk:{
+      urls_label:'Сілтемелер', urls_hint:'Әр жолда бір 2GIS сілтемесі. Бірнеше қала және айдар болуы мүмкін.',
+      gen_title:'🔗 Сілтеме жасау', country:'Ел', cities:'Қалалар', select_all:'барлығын таңдау', reset:'тазалау',
+      query:'Сұраныс', query_ph:'Тере бастаңыз: Кафе, Дәріхана…', rubric:'Айдар (міндетті емес)',
+      rubric_search_ph:'Айдарды іздеу…', wa_title:'💬 WhatsApp-тарату', wa_mode_label:'Қайда ашу',
+      wa_web:'WhatsApp Web (браузерде)', wa_app:'Қосымша / телефон (wa.me)', wa_templates:'Хабарлама үлгілері',
+      wa_add:'+ Үлгі қосу', wa_hint:'Карточкадағы «WhatsApp» басқанда чат кездейсоқ үлгімен ашылады. Бірнеше үлгі → әр мекемеге өз нұсқасы.',
+      filters_title:'🧹 Сүзгілер', f_dedup:'Франшизасыз (ұйымға 1)', f_phone:'Тек телефоны барлар',
+      f_wa:'Тек WhatsApp барлар', f_social:'Тек әлеуметтік желілермен', f_email:'Тек e-mail барлар',
+      f_site:'Тек сайты барлар', rating_from:'Рейтинг (бастап)', reviews_from:'Пікірлер (бастап)',
+      params_title:'📋 Параметрлер', maxrec:'Бір URL-ден макс. жазба', clean:'Таза көрініс (қоқыссыз)',
+      headless:'Жасырын браузер (headless)', adv_title:'⚙️ Қосымша баптаулар', a_images:'Суреттерді өшіру (жылдамырақ)',
+      a_max:'Браузерді жайып ашу', a_skip404:'Дәл сәйкестіктер («табылмады» өткізу)', a_rubrics:'«Айдарлар» бағаны',
+      a_comments:'Ұяшықтардағы түсініктемелер (жұмыс уақыты т.б.)', a_rmempty:'Бос бағандарды жою',
+      a_rmdup:'Қайталануларды жою', a_delay:'Басу кідірісі, мс', a_cols:'Өріске баған саны', a_mem:'RAM шегі, МБ',
+      a_enc:'Кодтау', hist_title:'🕘 Парсинг тарихы', hist_empty:'Әзірге бос. Аяқталған парсингтер осында сақталады.',
+      run:'Бастау', stop:'Тоқтату', search_ph:'Нәтижелерден іздеу…', sort_title:'Сұрыптау', sort_default:'Сұрыптаусыз',
+      sort_name_asc:'Атауы А–Я', sort_name_desc:'Атауы Я–А', sort_rating_desc:'Рейтинг ↓', sort_rating_asc:'Рейтинг ↑',
+      sort_reviews_desc:'Пікірлер ↓', sort_reviews_asc:'Пікірлер ↑', sort_rubric:'Айдар бойынша А–Я',
+      dl_label:'Жүктеу:', clear:'✕ Тазалау', clear_title:'Нәтижелерді тазалау (Тарихта қалады)',
+      log_title:'Парсинг журналы', empty_start:'Сол жақта сілтемелерді көрсетіп, «Бастау» басыңыз.',
+      cities_btn:'Қалаларды таңдаңыз', cities_sel:'Таңдалған қала: ', no_cities:'қала жоқ', no_rubric:'Айдарсыз',
+      no_rubric_opt:'— айдарсыз —', add_links:'Сілтемелерді қосу', added:'Қосылды: ', wa_tpl_ph:'Хабарлама мәтіні…',
+      found:'табылды', collected:'жиналды…', from_history:'(тарихтан)', merged:'(біріктірілді, дубльдер жойылды)',
+      collecting:'Деректер жиналуда…', empty_notfound:'Сұраныс бойынша ештеңе табылмады.',
+      st_ready:'Дайын', st_running:'Парсинг жүруде…', st_done:'Дайын', st_stopped:'Тоқтатылды', st_error:'Қате',
+      mark:'Хабарластық', mark_on:'✓ Хабарластық', note_ph:'Ескертпе…', hist_open:'Ашу',
+      hist_merge:'⛁ Таңдалғанды біріктіру (дедуп)', recs_short:'жзб.', more:'тағы',
+      a_need_url:'Кемінде бір 2GIS сілтемесін көрсетіңіз', a_need_query:'Сұранысты енгізіңіз',
+      a_need_city:'Кемінде бір қаланы таңдаңыз', a_server:'Сервер қолжетімсіз: ', a_start_err:'Іске қосу қатесі',
+      a_need_select:'Біріктіру үшін жазбаларды белгілеңіз', a_merge_err:'Біріктіру қатесі',
+      c_del:'Бұл жазбаны тарихтан жою керек пе?'
+    },
+    ru:{
+      urls_label:'Направления', urls_hint:'По одной ссылке 2GIS на строку. Можно несколько городов и рубрик.',
+      gen_title:'🔗 Создать ссылки', country:'Страна', cities:'Города', select_all:'выбрать все', reset:'сбросить',
+      query:'Запрос', query_ph:'Начните печатать: Кафе, Аптеки…', rubric:'Рубрика (необязательно)',
+      rubric_search_ph:'Поиск рубрики…', wa_title:'💬 WhatsApp-рассылка', wa_mode_label:'Открывать в',
+      wa_web:'WhatsApp Web (в браузере)', wa_app:'Приложение / телефон (wa.me)', wa_templates:'Шаблоны сообщений',
+      wa_add:'+ Добавить шаблон', wa_hint:'При клике на «WhatsApp» в карточке откроется чат с подставленным случайным шаблоном. Несколько шаблонов → каждому заведению свой вариант.',
+      filters_title:'🧹 Фильтры', f_dedup:'Без франшиз (1 на организацию)', f_phone:'Только с телефоном',
+      f_wa:'Только с WhatsApp', f_social:'Только с соцсетями', f_email:'Только с e-mail', f_site:'Только с сайтом',
+      rating_from:'Рейтинг от', reviews_from:'Отзывов от', params_title:'📋 Параметры',
+      maxrec:'Макс. записей с одного URL', clean:'Чистый вид (без мусора)', headless:'Скрытый браузер (headless)',
+      adv_title:'⚙️ Расширенные настройки', a_images:'Отключить изображения (быстрее)', a_max:'Запускать браузер развёрнутым',
+      a_skip404:'Точные совпадения (пропуск «не найдено»)', a_rubrics:'Колонка «Рубрики»',
+      a_comments:'Комментарии в ячейках (часы работы и т.д.)', a_rmempty:'Удалять пустые колонки',
+      a_rmdup:'Удалять дубликаты', a_delay:'Задержка кликов, мс', a_cols:'Колонок на поле', a_mem:'Лимит RAM, МБ',
+      a_enc:'Кодировка', hist_title:'🕘 История парсинга', hist_empty:'Пока пусто. Завершённые парсинги сохранятся здесь.',
+      run:'Запустить', stop:'Остановить', search_ph:'Поиск в результатах…', sort_title:'Сортировка', sort_default:'Без сортировки',
+      sort_name_asc:'Название А–Я', sort_name_desc:'Название Я–А', sort_rating_desc:'Рейтинг ↓', sort_rating_asc:'Рейтинг ↑',
+      sort_reviews_desc:'Отзывов ↓', sort_reviews_asc:'Отзывов ↑', sort_rubric:'По рубрике А–Я',
+      dl_label:'Скачать:', clear:'✕ Очистить', clear_title:'Очистить результаты (останутся в Истории)',
+      log_title:'Журнал парсинга', empty_start:'Укажите направления слева и нажмите «Запустить».',
+      cities_btn:'Выберите города', cities_sel:'Выбрано городов: ', no_cities:'нет городов', no_rubric:'Без рубрики',
+      no_rubric_opt:'— без рубрики —', add_links:'Добавить ссылки', added:'Добавлено: ', wa_tpl_ph:'Текст сообщения…',
+      found:'найдено', collected:'собрано…', from_history:'(из истории)', merged:'(объединено, дубли убраны)',
+      collecting:'Собираем данные…', empty_notfound:'Ничего не найдено по запросу.',
+      st_ready:'Готов', st_running:'Идёт парсинг…', st_done:'Готово', st_stopped:'Остановлено', st_error:'Ошибка',
+      mark:'Связались', mark_on:'✓ Связались', note_ph:'Заметка…', hist_open:'Открыть',
+      hist_merge:'⛁ Объединить выбранные (дедуп)', recs_short:'зап.', more:'ещё',
+      a_need_url:'Укажите хотя бы одну ссылку 2GIS', a_need_query:'Введите запрос',
+      a_need_city:'Выберите хотя бы один город', a_server:'Сервер недоступен: ', a_start_err:'Ошибка запуска',
+      a_need_select:'Отметьте галочками записи для объединения', a_merge_err:'Ошибка объединения',
+      c_del:'Удалить эту запись из истории?'
+    }
+  };
+  var LANG='kk', lastStatus='idle';
+  function t(k){return (T[LANG]&&T[LANG][k]!=null)?T[LANG][k]:(T.kk[k]!=null?T.kk[k]:k);}
+  function applyLang(lang){
+    LANG=(lang==='ru')?'ru':'kk'; var d=T[LANG];
+    [].forEach.call(document.querySelectorAll('[data-i18n]'),function(el){var k=el.getAttribute('data-i18n'); if(d[k]!=null)el.textContent=d[k];});
+    [].forEach.call(document.querySelectorAll('[data-i18n-ph]'),function(el){var k=el.getAttribute('data-i18n-ph'); if(d[k]!=null)el.setAttribute('placeholder',d[k]);});
+    [].forEach.call(document.querySelectorAll('[data-i18n-title]'),function(el){var k=el.getAttribute('data-i18n-title'); if(d[k]!=null)el.setAttribute('title',d[k]);});
+    [].forEach.call(document.querySelectorAll('.waTpl'),function(i){i.setAttribute('placeholder',d.wa_tpl_ph);});
+    [].forEach.call(document.querySelectorAll('.note'),function(i){i.setAttribute('placeholder',d.note_ph);});
+    document.documentElement.lang=LANG;
+    [].forEach.call($('langbtns').querySelectorAll('button'),function(b){b.classList.toggle('on',b.getAttribute('data-lang')===LANG);});
+    if(typeof updateCitiesLabel==='function')updateCitiesLabel();
+    if(GEN&&GEN.loaded){renderGenCities();renderGenRubrics();renderGenQueryList();
+      $('genRubBtn').textContent=GEN.rubCode?GEN.rubLabel:t('no_rubric');}
+    setStatus(lastStatus); loadHistory(); renderGrid();
+    try{localStorage.setItem('lang',LANG);}catch(_){}
+  }
+  $('langbtns').addEventListener('click',function(e){var b=e.target.closest('button'); if(b)applyLang(b.getAttribute('data-lang'));});
 
   function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
@@ -397,10 +495,10 @@
   }
 
   function setStatus(s){
-    var pill=$('pill'), t=$('pilltext');
-    pill.className='pill'; var map={running:['run','Идёт парсинг…'],done:['done','Готово'],
-      stopped:['stop','Остановлено'],error:['err','Ошибка'],idle:['','Готов']};
-    var m=map[s]||map.idle; if(m[0])pill.classList.add(m[0]); t.textContent=m[1];
+    lastStatus=s; var pill=$('pill'), tx=$('pilltext');
+    pill.className='pill'; var map={running:['run','st_running'],done:['done','st_done'],
+      stopped:['stop','st_stopped'],error:['err','st_error'],idle:['','st_ready']};
+    var m=map[s]||map.idle; if(m[0])pill.classList.add(m[0]); tx.textContent=t(m[1]);
   }
 
   function waTemplates(){
@@ -412,7 +510,7 @@
   function saveWa(){try{localStorage.setItem('wa_texts_v2',JSON.stringify(waValues()));}catch(_){}}
   function addWaRow(value){
     var row=document.createElement('div'); row.className='waRow';
-    row.innerHTML='<input type="text" class="waTpl" placeholder="Текст сообщения…">'+
+    row.innerHTML='<input type="text" class="waTpl" placeholder="'+t('wa_tpl_ph')+'">'+
       '<button type="button" class="waDel" title="Удалить">&times;</button>';
     $('waList').appendChild(row);
     row.querySelector('.waTpl').value=value||'';
@@ -446,8 +544,8 @@
     var blob=((r.name||'')+' '+(r.address||'')+' '+(r.city||'')+' '+((r.rubrics||[]).join(' '))+' '+(c.phone||'')).toLowerCase();
     var id=bizId(r), st=CONTACTS[id]||{}, done=st.status==='contacted';
     var foot='<div class="cardfoot">'+
-      '<button class="markbtn'+(done?' on':'')+'" data-id="'+esc(id)+'">'+(done?'✓ Связались':'Связались')+'</button>'+
-      '<input class="note" data-id="'+esc(id)+'" placeholder="Заметка…" value="'+esc(st.note||'')+'"></div>';
+      '<button class="markbtn'+(done?' on':'')+'" data-id="'+esc(id)+'">'+t(done?'mark_on':'mark')+'</button>'+
+      '<input class="note" data-id="'+esc(id)+'" placeholder="'+t('note_ph')+'" value="'+esc(st.note||'')+'"></div>';
     return '<article class="card'+(done?' done':'')+'" data-s="'+esc(blob)+'">'+
       '<div class="card-head"><h2>'+esc(r.name)+'</h2>'+rating+'</div>'+rub+
       (meta.length?'<div class="meta">'+meta.join(', ')+'</div>':'')+
@@ -483,17 +581,17 @@
     }
     grid.innerHTML=html;
     if(records.length===0){empty.style.display='block';
-      empty.innerHTML='<div class="big">🔎</div>'+($('pilltext').textContent==='Идёт парсинг…'?'Собираем данные…':'Укажите направления слева и нажмите «Запустить».');}
-    else if(shown===0){empty.style.display='block';empty.innerHTML='<div class="big">∅</div>Ничего не найдено по запросу.';}
+      empty.innerHTML='<div class="big">🔎</div>'+(lastStatus==='running'?t('collecting'):t('empty_start'));}
+    else if(shown===0){empty.style.display='block';empty.innerHTML='<div class="big">∅</div>'+t('empty_notfound');}
     else empty.style.display='none';
-    $('count').textContent=records.length?(records.length+' найдено'):'';
+    $('count').textContent=records.length?(records.length+' '+t('found')):'';
   }
 
   function tick(){
     fetch('/api/status?cursor='+cursor).then(function(r){return r.json()}).then(function(d){
       cursor=d.cursor;
       if(d.logs && d.logs.length){var lb=$('logbox'); lb.textContent+=(lb.textContent?'\n':'')+d.logs.join('\n'); lb.scrollTop=lb.scrollHeight;}
-      $('count').textContent=d.count?(d.count+(d.running?' собрано…':' найдено')):'';
+      $('count').textContent=d.count?(d.count+' '+(d.running?t('collected'):t('found'))):'';
       setStatus(d.status);
       if(!d.running){
         clearInterval(poll); poll=null;
@@ -508,15 +606,15 @@
 
   $('run').addEventListener('click',function(){
     var p=payload();
-    if(!p.urls.filter(function(u){return u.trim()}).length){alert('Укажите хотя бы одну ссылку 2GIS');return;}
+    if(!p.urls.filter(function(u){return u.trim()}).length){alert(t('a_need_url'));return;}
     $('logbox').textContent=''; $('logwrap').style.display=''; $('logwrap').open=true;
     dlEnabled(false); records=[]; histId=null; renderGrid(); cursor=0;
     fetch('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})
       .then(function(r){return r.json()}).then(function(d){
-        if(!d.ok){alert(d.error||'Ошибка запуска');return;}
+        if(!d.ok){alert(d.error||t('a_start_err'));return;}
         $('run').style.display='none'; $('stop').style.display=''; setStatus('running');
         if(poll)clearInterval(poll); poll=setInterval(tick,700); tick();
-      }).catch(function(e){alert('Сервер недоступен: '+e)});
+      }).catch(function(e){alert(t('a_server')+e)});
   });
 
   $('stop').addEventListener('click',function(){
@@ -546,19 +644,19 @@
     if(!urls||!urls.length)return '';
     var u=urls[0].replace(/^https?:\/\//,'');
     try{u=decodeURIComponent(u);}catch(_){}
-    return u+(urls.length>1?(' +'+(urls.length-1)+' ещё'):'');
+    return u+(urls.length>1?(' +'+(urls.length-1)+' '+t('more')):'');
   }
   function renderHistory(items){
     var el=$('histList');
-    if(!items.length){el.innerHTML='<div class="hint">Пока пусто. Завершённые парсинги сохранятся здесь.</div>';return;}
-    var bar=items.length>1?'<div class="histbar"><button id="histMerge" title="Собрать выбранные в один список и убрать дубли по телефону">⛁ Объединить выбранные (дедуп)</button></div>':'';
+    if(!items.length){el.innerHTML='<div class="hint">'+t('hist_empty')+'</div>';return;}
+    var bar=items.length>1?'<div class="histbar"><button id="histMerge">'+t('hist_merge')+'</button></div>':'';
     el.innerHTML=bar+items.map(function(it){
       return '<div class="histItem">'+
         '<div class="hh"><label class="hsel"><input type="checkbox" class="hcheck" data-id="'+esc(it.id)+'"> '+
-          esc(fmtDate(it.created_at))+' · '+it.count+' зап.</label>'+
-        '<button class="hdel" title="Удалить" data-del="'+esc(it.id)+'">×</button></div>'+
+          esc(fmtDate(it.created_at))+' · '+it.count+' '+t('recs_short')+'</label>'+
+        '<button class="hdel" title="✕" data-del="'+esc(it.id)+'">×</button></div>'+
         '<div class="hu">'+esc(urlsSummary(it.urls))+'</div>'+
-        '<div class="hb"><button class="hbtn open" data-open="'+esc(it.id)+'">Открыть</button>'+
+        '<div class="hb"><button class="hbtn open" data-open="'+esc(it.id)+'">'+t('hist_open')+'</button>'+
         '<button class="hbtn" data-dl="'+esc(it.id)+'" data-fmt="html">HTML</button>'+
         '<button class="hbtn" data-dl="'+esc(it.id)+'" data-fmt="xlsx">XLSX</button>'+
         '<button class="hbtn" data-dl="'+esc(it.id)+'" data-fmt="csv">CSV</button></div></div>';
@@ -568,22 +666,22 @@
     fetch('/api/history').then(function(r){return r.json()})
       .then(function(d){renderHistory(d.items||[]);}).catch(function(){});
   }
-  function openHist(id,label){
+  function openHist(id,key){
     fetch('/api/history/'+id+'/results').then(function(r){return r.json()}).then(function(res){
       records=res.records||[]; histId=id; renderGrid(); dlEnabled(records.length>0);
-      $('count').textContent=records.length+' '+(label||'(из истории)');
+      $('count').textContent=records.length+' '+t(key||'from_history');
       var g=$('grid'); if(g.scrollIntoView)g.scrollIntoView({behavior:'smooth',block:'start'});
     });
   }
   $('histList').addEventListener('click',function(e){
     if(e.target.id==='histMerge'){
       var ids=[].map.call($('histList').querySelectorAll('.hcheck:checked'),function(c){return c.getAttribute('data-id');});
-      if(!ids.length){alert('Отметьте галочками записи для объединения');return;}
+      if(!ids.length){alert(t('a_need_select'));return;}
       fetch('/api/history/merge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:ids})})
         .then(function(r){return r.json()}).then(function(d){
-          if(!d.ok){alert(d.error||'Ошибка объединения');return;}
-          loadHistory(); openHist(d.id,'(объединено, дубли убраны)');
-        }).catch(function(){alert('Ошибка объединения');});
+          if(!d.ok){alert(d.error||t('a_merge_err'));return;}
+          loadHistory(); openHist(d.id,'merged');
+        }).catch(function(){alert(t('a_merge_err'));});
       return;
     }
     var open=e.target.closest('[data-open]'), del=e.target.closest('[data-del]'), dl=e.target.closest('[data-dl]');
@@ -592,7 +690,7 @@
     } else if(dl){
       window.location='/api/history/'+dl.getAttribute('data-dl')+'/download?format='+dl.getAttribute('data-fmt');
     } else if(del){
-      if(confirm('Удалить эту запись из истории?'))
+      if(confirm(t('c_del')))
         fetch('/api/history/'+del.getAttribute('data-del'),{method:'DELETE'}).then(function(){loadHistory();});
     }
   });
@@ -625,7 +723,7 @@
       st.status=(st.status==='contacted')?'':'contacted'; CONTACTS[id]=st; saveContacts();
       var done=st.status==='contacted', card=mark.closest('.card');
       if(card)card.classList.toggle('done',done);
-      mark.classList.toggle('on',done); mark.textContent=done?'✓ Связались':'Связались';
+      mark.classList.toggle('on',done); mark.textContent=t(done?'mark_on':'mark');
     }
   });
   // Per-card note input.
@@ -662,12 +760,12 @@
     var list=GEN.cities.filter(function(c){return c.country_code===cc;});
     $('genCities').innerHTML=list.length?list.map(function(c){
       return '<label><input type="checkbox" data-code="'+esc(c.code)+'" data-domain="'+esc(c.domain)+'"> '+esc(c.name)+'</label>';
-    }).join(''):'<div class="hint">нет городов</div>';
+    }).join(''):'<div class="hint">'+t('no_cities')+'</div>';
     updateCitiesLabel();
   }
   function updateCitiesLabel(){
     var n=$('genCities').querySelectorAll('input:checked').length;
-    $('genCitiesBtn').textContent=n?('Выбрано городов: '+n):'Выберите города';
+    $('genCitiesBtn').textContent=n?(t('cities_sel')+n):t('cities_btn');
   }
   function curRubrics(){var ru=isRu();return GEN.rubrics.filter(function(r){return ru?r.is_russian:r.is_non_russian;});}
   function renderGenRubrics(){
@@ -675,7 +773,7 @@
     var list=curRubrics();
     if(term)list=list.filter(function(r){return r.label.toLowerCase().indexOf(term)>-1;});
     list=list.slice(0,300);
-    var html='<div class="ri'+(GEN.rubCode?'':' sel')+'" data-code="">— без рубрики —</div>';
+    var html='<div class="ri'+(GEN.rubCode?'':' sel')+'" data-code="">'+t('no_rubric_opt')+'</div>';
     html+=list.map(function(r){
       return '<div class="ri'+(GEN.rubCode===r.code?' sel':'')+'" data-code="'+esc(r.code)+'">'+esc(r.label)+'</div>';
     }).join('');
@@ -698,7 +796,7 @@
   $('gen').addEventListener('toggle',function(){if($('gen').open)loadGenerator();});
   function setRubric(code,label){
     GEN.rubCode=code||''; GEN.rubLabel=code?label:'';
-    $('genRubBtn').textContent=code?label:'Без рубрики';
+    $('genRubBtn').textContent=code?label:t('no_rubric');
   }
   $('genCountry').addEventListener('change',function(){
     setRubric('',''); $('genRubricSearch').value='';
@@ -730,9 +828,9 @@
     [].forEach.call($('genCities').querySelectorAll('input'),function(i){i.checked=false;});updateCitiesLabel();});
   $('genAdd').addEventListener('click',function(){
     var q=$('genQuery').value.trim();
-    if(!q){alert('Введите запрос');return;}
+    if(!q){alert(t('a_need_query'));return;}
     var checked=$('genCities').querySelectorAll('input:checked');
-    if(!checked.length){alert('Выберите хотя бы один город');return;}
+    if(!checked.length){alert(t('a_need_city'));return;}
     var code=GEN.rubCode||'';
     var existing=$('urls').value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
     var seen={}; existing.forEach(function(u){seen[u]=1;});
@@ -743,12 +841,14 @@
       if(!seen[url]){existing.push(url);seen[url]=1;added++;}
     });
     $('urls').value=existing.join('\n');
-    var btn=$('genAdd'); btn.textContent='Добавлено: '+added;
-    setTimeout(function(){btn.textContent='Добавить ссылки';},1300);
+    var btn=$('genAdd'); btn.textContent=t('added')+added;
+    setTimeout(function(){btn.textContent=t('add_links');},1300);
   });
 
   // Restore state on load: preload generator data, show last results / resume a job.
   (function init(){
+    var savedLang='kk'; try{savedLang=localStorage.getItem('lang')||'kk';}catch(_){}
+    applyLang(savedLang);
     loadGenerator();
     loadHistory();
     fetch('/api/status?cursor=0').then(function(r){return r.json()}).then(function(d){
