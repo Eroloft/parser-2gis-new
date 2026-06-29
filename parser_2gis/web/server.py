@@ -10,6 +10,8 @@ from typing import Any
 from ..config import Configuration
 from ..logger import logger
 from ..paths import data_path
+from ..writer import WriterOptions, get_writer
+from .history import History
 from .job import ParseJob
 
 # Download file names per format.
@@ -100,6 +102,16 @@ def create_app():
     static_dir = os.path.join(os.path.dirname(__file__), 'static')
     app = Flask(__name__, static_folder=static_dir, static_url_path='/static')
     job = ParseJob()
+    history = History()
+
+    def _export_send(docs, writer_opts: WriterOptions, fmt: str):
+        """Write `docs` to a temp file in `fmt` and send it as a download."""
+        tmp_dir = tempfile.mkdtemp(prefix='p2gis_web_')
+        out_path = os.path.join(tmp_dir, _DOWNLOAD_NAMES[fmt])
+        with get_writer(out_path, fmt, writer_opts) as writer:
+            for doc in docs:
+                writer.write(doc)
+        return send_file(out_path, as_attachment=True, download_name=_DOWNLOAD_NAMES[fmt])
 
     @app.route('/')
     def index():
@@ -163,14 +175,45 @@ def create_app():
         if not job.count:
             return jsonify({'ok': False, 'error': 'Нет данных'}), 400
 
-        tmp_dir = tempfile.mkdtemp(prefix='p2gis_web_')
-        out_path = os.path.join(tmp_dir, _DOWNLOAD_NAMES[fmt])
         try:
-            job.export(out_path, fmt)
+            assert job.collector is not None
+            return _export_send(job.collector.docs, job.collector._options, fmt)
         except Exception as e:
             logger.error('Ошибка экспорта: %s', e)
             return jsonify({'ok': False, 'error': str(e)}), 500
-        return send_file(out_path, as_attachment=True, download_name=_DOWNLOAD_NAMES[fmt])
+
+    @app.route('/api/history')
+    def api_history():
+        return jsonify({'items': history.list()})
+
+    @app.route('/api/history/<hid>/results')
+    def api_history_results(hid):
+        docs = history.docs(hid)
+        if docs is None:
+            return jsonify({'ok': False, 'error': 'Запись не найдена'}), 404
+        return jsonify({'records': history.records(hid)})
+
+    @app.route('/api/history/<hid>/download')
+    def api_history_download(hid):
+        fmt = request.args.get('format', 'csv')
+        if fmt not in _DOWNLOAD_NAMES:
+            return jsonify({'ok': False, 'error': 'Неизвестный формат'}), 400
+        docs = history.docs(hid)
+        if not docs:
+            return jsonify({'ok': False, 'error': 'Запись не найдена'}), 404
+        try:
+            opts = WriterOptions(**history.writer_options(hid))
+        except Exception:
+            opts = WriterOptions()
+        try:
+            return _export_send(docs, opts, fmt)
+        except Exception as e:
+            logger.error('Ошибка экспорта истории: %s', e)
+            return jsonify({'ok': False, 'error': str(e)}), 500
+
+    @app.route('/api/history/<hid>', methods=['DELETE'])
+    def api_history_delete(hid):
+        return jsonify({'ok': history.delete(hid)})
 
     return app
 

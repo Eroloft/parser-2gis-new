@@ -11,6 +11,7 @@ from ..writer import FilterWriter, get_writer
 from ..writer.filters import any_filter_enabled
 from ..writer.record import extract_record
 from ..writer.writers import FileWriter
+from .history import History
 
 # Keep at most this many log lines in memory for the live progress panel.
 _MAX_LOG_LINES = 5000
@@ -124,6 +125,14 @@ class ParseJob:
 
             self.status = 'stopped' if self._cancelled else 'done'
             logger.info('Парсинг %s.', 'остановлен' if self._cancelled else 'завершён')
+
+            # Persist this parse to history so it survives reloads/restarts.
+            if self.collector and self.collector.docs:
+                try:
+                    History().save(urls, self.collector.docs,
+                                   self.collector._options.model_dump(mode='json'))
+                except Exception as e:
+                    logger.error('Не удалось сохранить историю: %s', e)
         except Exception as e:
             self.error = str(e)
             self.status = 'error'

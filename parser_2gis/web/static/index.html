@@ -139,6 +139,19 @@
   .btn-gen{background:#0f172a;color:#fff;padding:10px 14px}
   .btn-gen:hover{filter:brightness(1.2)}
   #genRubric{font-size:13px}
+  /* Parse history list */
+  .histList{display:flex;flex-direction:column;gap:7px}
+  .histItem{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;
+    display:flex;flex-direction:column;gap:5px}
+  .histItem .hh{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .histItem .ht{font-size:12.5px;font-weight:600;color:var(--text)}
+  .histItem .hu{font-size:11.5px;color:var(--muted);line-height:1.35;word-break:break-all}
+  .histItem .hb{display:flex;gap:6px;flex-wrap:wrap}
+  .histItem .hbtn{font-size:11.5px;font-weight:600;border:1px solid var(--line);background:#f1f3f8;
+    color:var(--text);padding:5px 9px;border-radius:8px;cursor:pointer}
+  .histItem .hbtn:hover{filter:brightness(.96)}
+  .histItem .hbtn.open{background:var(--primary);color:#fff;border-color:transparent}
+  .histItem .hdel{margin-left:auto;color:var(--danger);background:none;border:none;cursor:pointer;font-size:16px;padding:0 4px}
   @media (max-width:1024px){
     .app{grid-template-columns:1fr}
     /* Drop the scroll container around the sidebar so native <select> pickers
@@ -164,6 +177,13 @@
       <textarea id="urls" placeholder="https://2gis.kz/almaty/search/Кафе&#10;https://2gis.ru/moscow/search/Аптеки"></textarea>
       <div class="hint">По одной ссылке 2GIS на строку. Можно несколько городов и рубрик.</div>
     </div>
+
+    <details class="sect" id="hist">
+      <summary>🕘 История парсинга</summary>
+      <div class="sectbody">
+        <div id="histList" class="histList"><div class="hint">Пока пусто. Завершённые парсинги сохранятся здесь.</div></div>
+      </div>
+    </details>
 
     <details class="sect" id="gen">
       <summary>🔗 Генератор ссылок</summary>
@@ -286,7 +306,7 @@
 <script>
 (function(){
   var $=function(id){return document.getElementById(id)};
-  var poll=null, cursor=0, records=[];
+  var poll=null, cursor=0, records=[], histId=null;
 
   function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
@@ -381,7 +401,8 @@
         clearInterval(poll); poll=null;
         $('run').style.display=''; $('stop').style.display='none';
         fetch('/api/results').then(function(r){return r.json()}).then(function(res){
-          records=res.records||[]; renderGrid(); dlEnabled(records.length>0);
+          records=res.records||[]; histId=null; renderGrid(); dlEnabled(records.length>0);
+          loadHistory();
         });
       }
     }).catch(function(){});
@@ -391,7 +412,7 @@
     var p=payload();
     if(!p.urls.filter(function(u){return u.trim()}).length){alert('Укажите хотя бы одну ссылку 2GIS');return;}
     $('logbox').textContent=''; $('logwrap').style.display=''; $('logwrap').open=true;
-    dlEnabled(false); records=[]; renderGrid(); cursor=0;
+    dlEnabled(false); records=[]; histId=null; renderGrid(); cursor=0;
     fetch('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})
       .then(function(r){return r.json()}).then(function(d){
         if(!d.ok){alert(d.error||'Ошибка запуска');return;}
@@ -408,7 +429,50 @@
   function dlEnabled(on){[].forEach.call(document.querySelectorAll('.dl-fmt'),function(b){b.disabled=!on;});}
   $('dlbar').addEventListener('click',function(e){
     var b=e.target.closest('.dl-fmt'); if(!b||b.disabled)return;
-    window.location='/api/download?format='+encodeURIComponent(b.getAttribute('data-fmt'));
+    var base=histId?('/api/history/'+histId+'/download'):'/api/download';
+    window.location=base+'?format='+encodeURIComponent(b.getAttribute('data-fmt'));
+  });
+
+  // ---- Parse history ----
+  function fmtDate(iso){return iso?iso.replace('T',' ').slice(0,16):'';}
+  function urlsSummary(urls){
+    if(!urls||!urls.length)return '';
+    var u=urls[0].replace(/^https?:\/\//,'');
+    return u+(urls.length>1?(' +'+(urls.length-1)+' ещё'):'');
+  }
+  function renderHistory(items){
+    var el=$('histList');
+    if(!items.length){el.innerHTML='<div class="hint">Пока пусто. Завершённые парсинги сохранятся здесь.</div>';return;}
+    el.innerHTML=items.map(function(it){
+      return '<div class="histItem">'+
+        '<div class="hh"><span class="ht">'+esc(fmtDate(it.created_at))+' · '+it.count+' зап.</span>'+
+        '<button class="hdel" title="Удалить" data-del="'+esc(it.id)+'">×</button></div>'+
+        '<div class="hu">'+esc(urlsSummary(it.urls))+'</div>'+
+        '<div class="hb"><button class="hbtn open" data-open="'+esc(it.id)+'">Открыть</button>'+
+        '<button class="hbtn" data-dl="'+esc(it.id)+'" data-fmt="xlsx">XLSX</button>'+
+        '<button class="hbtn" data-dl="'+esc(it.id)+'" data-fmt="csv">CSV</button>'+
+        '<button class="hbtn" data-dl="'+esc(it.id)+'" data-fmt="html">HTML</button></div></div>';
+    }).join('');
+  }
+  function loadHistory(){
+    fetch('/api/history').then(function(r){return r.json()})
+      .then(function(d){renderHistory(d.items||[]);}).catch(function(){});
+  }
+  $('histList').addEventListener('click',function(e){
+    var open=e.target.closest('[data-open]'), del=e.target.closest('[data-del]'), dl=e.target.closest('[data-dl]');
+    if(open){
+      var id=open.getAttribute('data-open');
+      fetch('/api/history/'+id+'/results').then(function(r){return r.json()}).then(function(res){
+        records=res.records||[]; histId=id; renderGrid(); dlEnabled(records.length>0);
+        $('count').textContent=records.length+' (из истории)';
+        var g=$('grid'); if(g.scrollIntoView)g.scrollIntoView({behavior:'smooth',block:'start'});
+      });
+    } else if(dl){
+      window.location='/api/history/'+dl.getAttribute('data-dl')+'/download?format='+dl.getAttribute('data-fmt');
+    } else if(del){
+      if(confirm('Удалить эту запись из истории?'))
+        fetch('/api/history/'+del.getAttribute('data-del'),{method:'DELETE'}).then(function(){loadHistory();});
+    }
   });
 
   $('search').addEventListener('input',renderGrid);
@@ -504,6 +568,7 @@
   // Restore state on load: preload generator data, show last results / resume a job.
   (function init(){
     loadGenerator();
+    loadHistory();
     fetch('/api/status?cursor=0').then(function(r){return r.json()}).then(function(d){
       cursor=d.cursor; setStatus(d.status);
       if(d.logs && d.logs.length){$('logwrap').style.display='';$('logbox').textContent=d.logs.join('\n');}
