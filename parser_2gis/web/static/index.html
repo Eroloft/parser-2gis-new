@@ -346,10 +346,10 @@
       </div>
       <div class="dl" id="dlbar">
         <span class="dl-label">Скачать:</span>
+        <button class="dl-fmt" data-fmt="html" disabled>HTML</button>
         <button class="dl-fmt" data-fmt="csv" disabled>CSV</button>
         <button class="dl-fmt" data-fmt="xlsx" disabled>XLSX</button>
         <button class="dl-fmt" data-fmt="json" disabled>JSON</button>
-        <button class="dl-fmt" data-fmt="html" disabled>HTML</button>
       </div>
       <button class="btn-clear" id="clear" title="Очистить результаты (останутся в Истории)" disabled>✕ Очистить</button>
     </div>
@@ -559,9 +559,9 @@
         '<button class="hdel" title="Удалить" data-del="'+esc(it.id)+'">×</button></div>'+
         '<div class="hu">'+esc(urlsSummary(it.urls))+'</div>'+
         '<div class="hb"><button class="hbtn open" data-open="'+esc(it.id)+'">Открыть</button>'+
+        '<button class="hbtn" data-dl="'+esc(it.id)+'" data-fmt="html">HTML</button>'+
         '<button class="hbtn" data-dl="'+esc(it.id)+'" data-fmt="xlsx">XLSX</button>'+
-        '<button class="hbtn" data-dl="'+esc(it.id)+'" data-fmt="csv">CSV</button>'+
-        '<button class="hbtn" data-dl="'+esc(it.id)+'" data-fmt="html">HTML</button></div></div>';
+        '<button class="hbtn" data-dl="'+esc(it.id)+'" data-fmt="csv">CSV</button></div></div>';
     }).join('');
   }
   function loadHistory(){
