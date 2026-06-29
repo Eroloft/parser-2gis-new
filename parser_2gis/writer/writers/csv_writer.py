@@ -105,6 +105,22 @@ class CSVWriter(FileWriter):
         if self._options.csv.remove_duplicates:
             logger.info('Удаление повторяющихся записей CSV.')
             self._remove_duplicates()
+        self._add_excel_separator_hint()
+
+    def _add_excel_separator_hint(self) -> None:
+        """Prepend a `sep=,` directive line.
+
+        Excel in many locales (RU/KZ/…) defaults its list separator to ';', so a
+        comma-delimited CSV lands entirely in column A. The leading `sep=,` line
+        tells Excel to use a comma regardless of locale; Excel consumes the line
+        and does not show it. (XLSXWriter skips this line when converting.)
+        """
+        tmp_csv_name = os.path.splitext(self._file_path)[0] + '.sep.csv'
+        with self._open_file(tmp_csv_name, 'w') as f_out, \
+                self._open_file(self._file_path, 'r') as f_in:
+            f_out.write('sep=,\n')
+            shutil.copyfileobj(f_in, f_out)
+        shutil.move(tmp_csv_name, self._file_path)
 
     def _remove_empty_columns(self) -> None:
         """Post-process: Remove empty columns."""

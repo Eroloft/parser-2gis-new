@@ -16,8 +16,11 @@ def check_csv_result(result_path, num_records):
         num_records: Expected number of records.
     """
     with open(result_path, 'r', encoding='utf-8-sig', errors='replace') as f:
-        reader = csv.reader(f)
-        assert len(list(reader)) == num_records + 1  # `num_records` + header
+        rows = list(csv.reader(f))
+    # Skip the leading Excel `sep=,` hint line if present.
+    if rows and rows[0] and rows[0][0].startswith('sep='):
+        rows = rows[1:]
+    assert len(rows) == num_records + 1  # `num_records` + header
 
 
 def check_json_result(result_path, num_records):

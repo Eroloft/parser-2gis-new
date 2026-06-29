@@ -27,6 +27,10 @@ class XLSXWriter(CSVWriter):
         with self._open_file(self._file_path, 'r') as f_csv:
             rows = list(csv.reader(f_csv))
 
+        # Drop the Excel `sep=,` hint line added by CSVWriter (not a data row here).
+        if rows and rows[0] and rows[0][0].startswith('sep='):
+            rows = rows[1:]
+
         if not rows:
             return
 
