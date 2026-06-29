@@ -69,6 +69,7 @@
   #search{flex:1;min-width:180px;padding:10px 13px;border:1px solid var(--line);border-radius:11px;
     background:#fff;font:inherit;outline:none}
   #search:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(99,102,241,.13)}
+  .sortsel{width:auto;padding:9px 11px;font-size:13px}
   .dl{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
   .dl-label{font-size:13px;color:var(--muted);font-weight:600}
   .dl-fmt{background:#0f172a;color:#fff;padding:9px 13px;font-size:12.5px;font-weight:650;border-radius:9px}
@@ -185,7 +186,7 @@
     </div>
 
     <details class="sect" id="gen">
-      <summary>🔗 Генератор ссылок</summary>
+      <summary>🔗 Создать ссылки</summary>
       <div class="sectbody">
         <label class="field"><span>Страна</span><select id="genCountry"></select></label>
         <div class="field">
@@ -295,6 +296,15 @@
       <span class="pill" id="pill"><span class="dot"></span><span id="pilltext">Готов</span></span>
       <span id="count"></span>
       <input id="search" type="search" placeholder="Поиск в результатах…" autocomplete="off">
+      <select id="sort" class="sortsel" title="Сортировка">
+        <option value="default">Без сортировки</option>
+        <option value="name_asc">Название А–Я</option>
+        <option value="name_desc">Название Я–А</option>
+        <option value="rating_desc">Рейтинг ↓</option>
+        <option value="rating_asc">Рейтинг ↑</option>
+        <option value="reviews_desc">Отзывов ↓</option>
+        <option value="reviews_asc">Отзывов ↑</option>
+      </select>
       <div class="dl" id="dlbar">
         <span class="dl-label">Скачать:</span>
         <button class="dl-fmt" data-fmt="csv" disabled>CSV</button>
@@ -385,12 +395,27 @@
       '<div class="acts">'+b.join('')+'</div></article>';
   }
 
+  function sortRecords(arr){
+    var s=$('sort').value;
+    if(s==='default')return arr;
+    var name=function(r){return (r.name||'').toLowerCase();};
+    var num=function(v){return (typeof v==='number')?v:-1;};
+    var a=arr.slice();
+    if(s==='name_asc')a.sort(function(x,y){return name(x).localeCompare(name(y),'ru');});
+    else if(s==='name_desc')a.sort(function(x,y){return name(y).localeCompare(name(x),'ru');});
+    else if(s==='rating_desc')a.sort(function(x,y){return num(y.rating)-num(x.rating);});
+    else if(s==='rating_asc')a.sort(function(x,y){return num(x.rating)-num(y.rating);});
+    else if(s==='reviews_desc')a.sort(function(x,y){return num(y.review_count)-num(x.review_count);});
+    else if(s==='reviews_asc')a.sort(function(x,y){return num(x.review_count)-num(y.review_count);});
+    return a;
+  }
   function renderGrid(){
     var term=$('search').value.trim().toLowerCase();
     var grid=$('grid'), empty=$('empty');
+    var list=sortRecords(records);
     var html='', shown=0;
-    for(var i=0;i<records.length;i++){
-      var r=records[i];
+    for(var i=0;i<list.length;i++){
+      var r=list[i];
       var blob=((r.name||'')+' '+(r.address||'')+' '+(r.city||'')+' '+((r.rubrics||[]).join(' '))).toLowerCase();
       if(term && blob.indexOf(term)<0) continue;
       html+=renderCard(r); shown++;
@@ -497,6 +522,7 @@
   });
 
   $('search').addEventListener('input',renderGrid);
+  $('sort').addEventListener('change',renderGrid);
 
   // WhatsApp button: open chosen mode (Web / app) with a random message template.
   $('grid').addEventListener('click',function(e){
