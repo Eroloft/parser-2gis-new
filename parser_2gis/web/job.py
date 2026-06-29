@@ -136,20 +136,26 @@ class ParseJob:
 
             self.status = 'stopped' if self._cancelled else 'done'
             logger.info('Парсинг %s.', 'остановлен' if self._cancelled else 'завершён')
-
-            # Persist this parse to history so it survives reloads/restarts.
-            if self.collector and self.collector.docs:
+        except Exception as e:
+            if self._cancelled:
+                # Stopping closes the browser tab mid-request, surfacing as
+                # "Tab has been stopped" — a clean stop, not a failure.
+                self.status = 'stopped'
+                logger.info('Парсинг остановлен.')
+            else:
+                self.error = str(e)
+                self.status = 'error'
+                logger.error('Ошибка во время работы парсера.', exc_info=True)
+        finally:
+            self._parser = None
+            # Persist whatever was collected — full run or partial stop — so the
+            # records survive reloads and aren't lost when the user hits Stop.
+            if self.status in ('done', 'stopped') and self.collector and self.collector.docs:
                 try:
                     History().save(urls, self.collector.docs,
                                    self.collector._options.model_dump(mode='json'))
                 except Exception as e:
                     logger.error('Не удалось сохранить историю: %s', e)
-        except Exception as e:
-            self.error = str(e)
-            self.status = 'error'
-            logger.error('Ошибка во время работы парсера.', exc_info=True)
-        finally:
-            self._parser = None
             logger.removeHandler(handler)
 
     def results(self) -> list[dict]:
