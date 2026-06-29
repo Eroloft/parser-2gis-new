@@ -60,9 +60,12 @@ class BuildStandaloneCommand(distutils.cmd.Command):
                     '--icon', 'parser_2gis/data/images/icon.icns',
                 ]
 
-            # Add data
+            # Add data (reference data + bundled web dashboard assets).
+            # The web UI is served from parser_2gis/web/static, so it must be
+            # frozen into the binary or the dashboard 404s.
             build_cmd += [
                 '--add-data', f'parser_2gis/data{os.pathsep}parser_2gis/data',
+                '--add-data', f'parser_2gis/web{os.pathsep}parser_2gis/web',
                 'parser-2gis.py',
             ]
 

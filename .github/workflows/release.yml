@@ -10,20 +10,19 @@ jobs:
     name: Build
 
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             dist: linux
 
-          - os: macos-12
+          - os: macos-13
             dist: macos
-            ext:
 
           - os: macos-14
             dist: macos-arm
-            ext:
 
-          - os: windows-2019
+          - os: windows-2022
             dist: windows
 
     runs-on: ${{ matrix.os }}
@@ -31,23 +30,20 @@ jobs:
     steps:
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=version::${GITHUB_REF#refs/tags/}
+      run: echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
       shell: bash
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v3
+    - name: Set up Python
+      uses: actions/setup-python@v5
       with:
-        python-version: "3.11.3"
+        python-version: "3.12"
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install -e .[gui,dev]
-        # Replace pydantic with no-binary version to lightweight target binary a bit
-        # python -m pip uninstall -y pydantic
-        # python -m pip install --no-binary pydantic pydantic>=1.9.0
+        python -m pip install -e .[dev]
 
     - name: Build standalone app
       run: |
@@ -55,7 +51,7 @@ jobs:
 
     - name: Archive Windows distributive
       if: matrix.dist == 'windows'
-      run: pushd dist && 7z a ../Parser2GIS-${{steps.get_version.outputs.version}}-${{matrix.dist}}.zip  Parser2GIS.exe && popd
+      run: pushd dist && 7z a ../Parser2GIS-${{steps.get_version.outputs.version}}-${{matrix.dist}}.zip Parser2GIS.exe && popd
       shell: bash
 
     - name: Archive Linux/MacOS distributive
@@ -64,7 +60,7 @@ jobs:
       shell: bash
 
     - name: Upload distributive
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dist-${{ matrix.dist }}
         path: Parser2GIS-*
@@ -77,14 +73,16 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
     - name: Get the version
       id: get_version
-      run: |
-        echo ::set-output name=version::${GITHUB_REF#refs/tags/v}
+      run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
       shell: bash
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Get Changelog Entry
       id: changelog_reader
@@ -93,15 +91,18 @@ jobs:
         version: ${{ steps.get_version.outputs.version }}
         path: ./CHANGELOG.md
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        merge-multiple: true
 
-    - uses: ncipollo/release-action@v1.10.0
+    - uses: ncipollo/release-action@v1
       with:
         tag: v${{ steps.changelog_reader.outputs.version }}
         name: Parser2GIS ${{ steps.changelog_reader.outputs.version }}
         body: ${{ steps.changelog_reader.outputs.changes }}
         prerelease: ${{ steps.changelog_reader.outputs.status == 'prereleased' }}
         draft: true
-        artifacts: "dist-*/*"
+        artifacts: "artifacts/*"
         allowUpdates: true
         token: ${{ secrets.GITHUB_TOKEN }}
