@@ -29,9 +29,10 @@
   .brand h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.01em}
   .group{display:flex;flex-direction:column;gap:9px}
   .group>label.h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-  textarea,input[type=number],select{width:100%;border:1px solid var(--line);border-radius:10px;
+  textarea,input:not([type=checkbox]),select{width:100%;border:1px solid var(--line);border-radius:10px;
     padding:10px 12px;font:inherit;background:#fff;color:var(--text);outline:none;
     transition:border-color .15s,box-shadow .15s}
+  select{-webkit-appearance:menulist;appearance:menulist}
   textarea{min-height:92px;resize:vertical;line-height:1.45}
   textarea:focus,input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(99,102,241,.13)}
   .hint{font-size:12px;color:var(--muted);line-height:1.4}
@@ -138,9 +139,16 @@
   .btn-gen{background:#0f172a;color:#fff;padding:10px 14px}
   .btn-gen:hover{filter:brightness(1.2)}
   #genRubric{font-size:13px}
-  @media (max-width:880px){
+  @media (max-width:1024px){
     .app{grid-template-columns:1fr}
-    aside{position:static;max-height:none;border-right:none;border-bottom:1px solid var(--line)}
+    /* Drop the scroll container around the sidebar so native <select> pickers
+       open correctly on tablets/phones. */
+    aside{position:static;max-height:none;overflow:visible;border-right:none;border-bottom:1px solid var(--line)}
+    /* 16px prevents iOS auto-zoom; 44px meets touch-target guidance. */
+    textarea,input:not([type=checkbox]),select,.msel-btn{font-size:16px;min-height:44px}
+    .check{padding:9px 9px} .check input{width:20px;height:20px}
+    /* Render the cities panel inline on touch instead of an absolute overlay. */
+    .msel-panel{position:static;box-shadow:none;margin-top:6px}
   }
 </style>
 </head>
@@ -181,31 +189,35 @@
       </div>
     </details>
 
-    <div class="group">
-      <label class="h">Фильтры</label>
-      <label class="check"><input type="checkbox" id="f_dedup"> Без франшиз (1 на организацию)</label>
-      <label class="check"><input type="checkbox" id="f_phone"> Только с телефоном</label>
-      <label class="check"><input type="checkbox" id="f_wa"> Только с WhatsApp</label>
-      <label class="check"><input type="checkbox" id="f_social"> Только с соцсетями</label>
-      <label class="check"><input type="checkbox" id="f_email"> Только с e-mail</label>
-      <label class="check"><input type="checkbox" id="f_site"> Только с сайтом</label>
-      <div class="rowmini">
-        <label class="field"><span>Рейтинг от</span><input type="number" id="f_rating" min="0" max="5" step="0.1" value="0"></label>
-        <label class="field"><span>Отзывов от</span><input type="number" id="f_reviews" min="0" step="1" value="0"></label>
+    <details class="sect" id="filt">
+      <summary>🧹 Фильтры</summary>
+      <div class="sectbody">
+        <label class="check"><input type="checkbox" id="f_dedup"> Без франшиз (1 на организацию)</label>
+        <label class="check"><input type="checkbox" id="f_phone"> Только с телефоном</label>
+        <label class="check"><input type="checkbox" id="f_wa"> Только с WhatsApp</label>
+        <label class="check"><input type="checkbox" id="f_social"> Только с соцсетями</label>
+        <label class="check"><input type="checkbox" id="f_email"> Только с e-mail</label>
+        <label class="check"><input type="checkbox" id="f_site"> Только с сайтом</label>
+        <div class="rowmini">
+          <label class="field"><span>Рейтинг от</span><input type="number" id="f_rating" min="0" max="5" step="0.1" value="0"></label>
+          <label class="field"><span>Отзывов от</span><input type="number" id="f_reviews" min="0" step="1" value="0"></label>
+        </div>
       </div>
-    </div>
+    </details>
 
-    <div class="group">
-      <label class="h">Параметры</label>
-      <div class="rowmini">
-        <label class="field"><span>Макс. записей</span><input type="number" id="maxrec" min="1" step="1" value="50"></label>
-        <label class="field"><span>Формат файла</span>
-          <select id="format"><option value="csv">CSV</option><option value="xlsx">XLSX</option>
-            <option value="json">JSON</option><option value="html">HTML</option></select></label>
+    <details class="sect" id="params">
+      <summary>📋 Параметры</summary>
+      <div class="sectbody">
+        <div class="rowmini">
+          <label class="field"><span>Макс. записей</span><input type="number" id="maxrec" min="1" step="1" value="50"></label>
+          <label class="field"><span>Формат файла</span>
+            <select id="format"><option value="csv">CSV</option><option value="xlsx">XLSX</option>
+              <option value="json">JSON</option><option value="html">HTML</option></select></label>
+        </div>
+        <label class="check"><input type="checkbox" id="clean" checked> Чистый вид (без мусора)</label>
+        <label class="check"><input type="checkbox" id="headless" checked> Скрытый браузер (headless)</label>
       </div>
-      <label class="check"><input type="checkbox" id="clean" checked> Чистый вид (без мусора)</label>
-      <label class="check"><input type="checkbox" id="headless" checked> Скрытый браузер (headless)</label>
-    </div>
+    </details>
 
     <details class="sect" id="adv">
       <summary>⚙️ Расширенные настройки</summary>
