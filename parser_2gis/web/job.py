@@ -168,11 +168,19 @@ class ParseJob:
                     if self._cancelled:
                         break
                     logger.info('Парсинг ссылки %s', url)
-                    self._parser = get_parser(url, chrome_options=config.chrome,
-                                              parser_options=config.parser)
-                    with self._parser:
-                        if not self._cancelled:
-                            self._parser.parse(writer)
+                    try:
+                        self._parser = get_parser(url, chrome_options=config.chrome,
+                                                  parser_options=config.parser)
+                        with self._parser:
+                            if not self._cancelled:
+                                self._parser.parse(writer)
+                    except Exception as e:
+                        if self._cancelled:
+                            raise  # a stop closed the tab — handled below as clean stop
+                        # One URL failing mid-scrape must not abort the rest of the
+                        # run — log it and move on to the next link.
+                        logger.error('Ссылка прервана из-за ошибки, переход к следующей: %s', e)
+                        continue
 
             self.status = 'stopped' if self._cancelled else 'done'
             logger.info('Парсинг %s.', 'остановлен' if self._cancelled else 'завершён')

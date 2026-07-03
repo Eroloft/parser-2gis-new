@@ -266,19 +266,30 @@ class MainParser:
             # Free memory allocated for collected requests
             self._chrome_remote.clear_requests()
 
-            # Calculate next page number and navigate it
-            if walk_page_number:
-                available_pages = self._get_available_pages()
-                available_pages_ahead = {k: v for k, v in available_pages.items()
-                                         if k > current_page_number}
-                next_page_number = min(available_pages_ahead, key=lambda n: abs(n - walk_page_number),  # type: ignore
-                                       default=current_page_number + 1)
-            else:
-                next_page_number = current_page_number + 1
+            # Calculate next page number and navigate it. Turning the page is a
+            # DOM operation that can hit a transient "DOM.resolveNode ... No node
+            # with given id found" when the list re-renders — retry once, and if it
+            # still fails end this URL gracefully instead of aborting the whole run.
+            next_page_number = None
+            for attempt in range(2):
+                try:
+                    if walk_page_number:
+                        available_pages = self._get_available_pages()
+                        available_pages_ahead = {k: v for k, v in available_pages.items()
+                                                 if k > current_page_number}
+                        next_page_number = min(available_pages_ahead, key=lambda n: abs(n - walk_page_number),  # type: ignore
+                                               default=current_page_number + 1)
+                    else:
+                        next_page_number = current_page_number + 1
 
-            current_page_number = self._go_page(next_page_number)  # type: ignore
+                    current_page_number = self._go_page(next_page_number)  # type: ignore
+                    break
+                except Exception as e:
+                    logger.error('Ошибка перехода на следующую страницу: %s', e)
+                    current_page_number = None
+                    self._chrome_remote.wait(1)
             if not current_page_number:
-                break  # Reached the end of the search results
+                break  # Reached the end of the search results (or navigation failed)
 
             # Unset walking page if we've done walking to the desired page
             if walk_page_number and walk_page_number <= current_page_number:
