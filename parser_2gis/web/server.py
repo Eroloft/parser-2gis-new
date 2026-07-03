@@ -139,6 +139,10 @@ def create_app():
         job.stop()
         return jsonify({'ok': True})
 
+    @app.route('/api/resume', methods=['POST'])
+    def api_resume():
+        return jsonify({'ok': job.resume()})
+
     @app.route('/api/clear', methods=['POST'])
     def api_clear():
         return jsonify({'ok': job.clear()})
@@ -150,6 +154,7 @@ def create_app():
         return jsonify({
             'status': job.status,
             'running': job.running,
+            'resumable': job.resumable,
             'count': job.count,
             'error': job.error,
             'logs': logs,

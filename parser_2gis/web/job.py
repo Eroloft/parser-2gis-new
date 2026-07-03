@@ -70,10 +70,20 @@ class ParseJob:
         self.logs: list[str] = []
         self.error: Optional[str] = None
         self.collector: Optional[CollectorWriter] = None
+        self._urls: list[str] = []
+        self._config: Optional[Configuration] = None
 
     @property
     def running(self) -> bool:
         return self.status == 'running'
+
+    @property
+    def resumable(self) -> bool:
+        """Whether the last run can be resumed (finished with an error/stop
+        and has both collected data and the URLs/config to continue from)."""
+        return (self.status in ('error', 'stopped')
+                and self.collector is not None
+                and bool(self._urls) and self._config is not None)
 
     @property
     def count(self) -> int:
@@ -88,9 +98,29 @@ class ParseJob:
             self.error = None
             self._cancelled = False
             self.collector = CollectorWriter(config.writer)
+            self._urls = urls
+            self._config = config
 
         self._thread = threading.Thread(target=self._run, args=(config, urls), daemon=True)
         self._thread.start()
+
+    def resume(self) -> bool:
+        """Continue a run that ended with an error (or was stopped), keeping the
+        records already collected. Re-parses the same URLs; dedup skips items that
+        were already captured. Returns False if there is nothing to resume."""
+        with self._lock:
+            if self.running or not self.resumable:
+                return False
+            config, urls = self._config, self._urls
+            assert config is not None
+            self.status = 'running'
+            self.error = None
+            self._cancelled = False
+
+        self._thread = threading.Thread(target=self._run, args=(config, urls),
+                                        kwargs={'resume': True}, daemon=True)
+        self._thread.start()
+        return True
 
     def stop(self) -> None:
         with self._lock:
@@ -112,17 +142,27 @@ class ParseJob:
             self.status = 'idle'
             return True
 
-    def _run(self, config: Configuration, urls: list[str]) -> None:
+    def _run(self, config: Configuration, urls: list[str], resume: bool = False) -> None:
         handler = _ListLogHandler(self.logs)
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)  # ensure INFO progress lines are captured
         try:
             assert self.collector is not None
             writer: FileWriter = self.collector
+            if resume:
+                # Force cross-niche dedup so re-scraped, already-collected items
+                # are not duplicated when continuing.
+                config.filters.dedup_across_niches = True
             if any_filter_enabled(config.filters):
-                writer = FilterWriter(self.collector, config.filters)
+                filter_writer = FilterWriter(self.collector, config.filters)
+                if resume:
+                    filter_writer.prime(self.collector.docs)
+                writer = filter_writer
 
-            logger.info('Парсинг запущен.')
+            if resume:
+                logger.info('Парсинг возобновлён. Уже собрано записей: %d.', len(self.collector.docs))
+            else:
+                logger.info('Парсинг запущен.')
             with writer:
                 for url in urls:
                     if self._cancelled:
@@ -148,9 +188,9 @@ class ParseJob:
                 logger.error('Ошибка во время работы парсера.', exc_info=True)
         finally:
             self._parser = None
-            # Persist whatever was collected — full run or partial stop — so the
-            # records survive reloads and aren't lost when the user hits Stop.
-            if self.status in ('done', 'stopped') and self.collector and self.collector.docs:
+            # Persist whatever was collected — full run, partial stop or error —
+            # so the records survive reloads and aren't lost on Stop or a crash.
+            if self.status in ('done', 'stopped', 'error') and self.collector and self.collector.docs:
                 try:
                     History().save(urls, self.collector.docs,
                                    self.collector._options.model_dump(mode='json'))

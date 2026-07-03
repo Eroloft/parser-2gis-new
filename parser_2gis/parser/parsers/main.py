@@ -200,36 +200,51 @@ class MainParser:
 
             # We should parse the page if we are not walking
             if not walk_page_number:
-                # Iterate through gathered links
+                # Iterate through gathered links.
+                # A single transient Chrome/DOM error (e.g. "DOM.resolveNode ...
+                # No node with given id found" when a node detaches mid-render)
+                # must not abort the whole run — skip that item and keep going.
+                # Bail only if many items fail in a row (tab is likely dead/stopped).
+                consecutive_failures = 0
                 for link in links:
-                    for _ in range(3):  # 3 attempts to get response
-                        # Click the link to provoke request
-                        # with a auth key and secret arguments
-                        self._chrome_remote.perform_click(link)
+                    try:
+                        resp = None
+                        for _ in range(3):  # 3 attempts to get response
+                            # Click the link to provoke request
+                            # with a auth key and secret arguments
+                            self._chrome_remote.perform_click(link)
 
-                        # Delay between clicks, could be usefull if
-                        # 2GIS's anti-bot service become more strict.
-                        if self._options.delay_between_clicks:
-                            self._chrome_remote.wait(self._options.delay_between_clicks / 1000)
+                            # Delay between clicks, could be usefull if
+                            # 2GIS's anti-bot service become more strict.
+                            if self._options.delay_between_clicks:
+                                self._chrome_remote.wait(self._options.delay_between_clicks / 1000)
 
-                        # Gather response and collect useful payload.
-                        resp = self._chrome_remote.wait_response(self._item_response_pattern)
+                            # Gather response and collect useful payload.
+                            resp = self._chrome_remote.wait_response(self._item_response_pattern)
 
-                        # If request is failed - repeat, otherwise go further.
+                            # If request is failed - repeat, otherwise go further.
+                            if resp and resp['status'] >= 0:
+                                break
+
+                        # Get response body data
                         if resp and resp['status'] >= 0:
-                            break
+                            data = self._chrome_remote.get_response_body(resp, timeout=10) if resp else None
 
-                    # Get response body data
-                    if resp and resp['status'] >= 0:
-                        data = self._chrome_remote.get_response_body(resp, timeout=10) if resp else None
-
-                        try:
-                            doc = json.loads(data)
-                        except json.JSONDecodeError:
-                            logger.error('Сервер вернул некорректный JSON документ: "%s", пропуск позиции.', data)
+                            try:
+                                doc = json.loads(data)
+                            except json.JSONDecodeError:
+                                logger.error('Сервер вернул некорректный JSON документ: "%s", пропуск позиции.', data)
+                                doc = None
+                        else:
                             doc = None
-                    else:
-                        doc = None
+                    except Exception as e:
+                        consecutive_failures += 1
+                        logger.error('Пропуск позиции из-за ошибки браузера: %s', e)
+                        if consecutive_failures >= 5:
+                            raise
+                        continue
+
+                    consecutive_failures = 0
 
                     if doc:
                         # Write API document into a file

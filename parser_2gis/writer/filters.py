@@ -115,6 +115,22 @@ class FilterWriter(FileWriter):
             return False
         return True
 
+    def prime(self, docs: list[Any]) -> None:
+        """Seed dedup state from already-collected documents.
+
+        Used when a run is resumed after an interruption: items captured before
+        the failure are marked as seen, so re-scraping the same pages appends only
+        genuinely new records instead of duplicating what is already there.
+        """
+        for doc in docs:
+            features = extract_features(doc)
+            if features is None:
+                continue
+            if self._filter_options.dedup_across_niches and features.item_id:
+                self._seen_items.add(features.item_id)
+            if self._filter_options.dedup_franchises and features.org_id:
+                self._seen_orgs.add(features.org_id)
+
     def write(self, catalog_doc: Any) -> None:
         features = extract_features(catalog_doc)
         if features is not None:

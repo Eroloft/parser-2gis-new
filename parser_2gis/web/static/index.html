@@ -335,6 +335,7 @@
 
     <div class="actions-bar">
       <button class="btn-run" id="run" data-i18n="run">Бастау</button>
+      <button class="btn-run" id="resume" style="display:none" data-i18n="resume">Жалғастыру</button>
       <button class="btn-stop" id="stop" style="display:none" data-i18n="stop">Тоқтату</button>
     </div>
   </aside>
@@ -402,7 +403,7 @@
       a_comments:'Ұяшықтардағы түсініктемелер (жұмыс уақыты т.б.)', a_rmempty:'Бос бағандарды жою',
       a_rmdup:'Қайталануларды жою', a_delay:'Басу кідірісі, мс', a_cols:'Өріске баған саны', a_mem:'RAM шегі, МБ',
       a_enc:'Кодтау', hist_title:'🕘 Парсинг тарихы', hist_empty:'Әзірге бос. Аяқталған парсингтер осында сақталады.',
-      run:'Бастау', stop:'Тоқтату', search_ph:'Нәтижелерден іздеу…', sort_title:'Сұрыптау', sort_default:'Сұрыптаусыз',
+      run:'Бастау', stop:'Тоқтату', resume:'Жалғастыру', a_resume_err:'Жалғастыру мүмкін болмады', search_ph:'Нәтижелерден іздеу…', sort_title:'Сұрыптау', sort_default:'Сұрыптаусыз',
       sort_name_asc:'Атауы А–Я', sort_name_desc:'Атауы Я–А', sort_rating_desc:'Рейтинг ↓', sort_rating_asc:'Рейтинг ↑',
       sort_reviews_desc:'Пікірлер ↓', sort_reviews_asc:'Пікірлер ↑', sort_rubric:'Айдар бойынша А–Я',
       dl_label:'Жүктеу:', clear:'✕ Тазалау', clear_title:'Нәтижелерді тазалау (Тарихта қалады)',
@@ -435,7 +436,7 @@
       a_comments:'Комментарии в ячейках (часы работы и т.д.)', a_rmempty:'Удалять пустые колонки',
       a_rmdup:'Удалять дубликаты', a_delay:'Задержка кликов, мс', a_cols:'Колонок на поле', a_mem:'Лимит RAM, МБ',
       a_enc:'Кодировка', hist_title:'🕘 История парсинга', hist_empty:'Пока пусто. Завершённые парсинги сохранятся здесь.',
-      run:'Запустить', stop:'Остановить', search_ph:'Поиск в результатах…', sort_title:'Сортировка', sort_default:'Без сортировки',
+      run:'Запустить', stop:'Остановить', resume:'Продолжить', a_resume_err:'Не удалось продолжить', search_ph:'Поиск в результатах…', sort_title:'Сортировка', sort_default:'Без сортировки',
       sort_name_asc:'Название А–Я', sort_name_desc:'Название Я–А', sort_rating_desc:'Рейтинг ↓', sort_rating_asc:'Рейтинг ↑',
       sort_reviews_desc:'Отзывов ↓', sort_reviews_asc:'Отзывов ↑', sort_rubric:'По рубрике А–Я',
       dl_label:'Скачать:', clear:'✕ Очистить', clear_title:'Очистить результаты (останутся в Истории)',
@@ -601,6 +602,7 @@
       if(!d.running){
         clearInterval(poll); poll=null;
         $('run').style.display=''; $('stop').style.display='none';
+        $('resume').style.display=(d.status==='error'&&d.resumable)?'':'none';
         fetch('/api/results').then(function(r){return r.json()}).then(function(res){
           records=res.records||[]; histId=null; renderGrid(); dlEnabled(records.length>0);
           loadHistory();
@@ -628,6 +630,7 @@
     if(!p.urls.filter(function(u){return u.trim()}).length){flagUrlsEmpty();return;}
     $('logbox').textContent=''; $('logwrap').style.display=''; $('logwrap').open=true;
     dlEnabled(false); records=[]; histId=null; renderGrid(); cursor=0;
+    $('resume').style.display='none';
     fetch('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})
       .then(function(r){return r.json()}).then(function(d){
         if(!d.ok){alert(d.error||t('a_start_err'));return;}
@@ -639,6 +642,16 @@
   $('stop').addEventListener('click',function(){
     $('stop').disabled=true;
     fetch('/api/stop',{method:'POST'}).finally(function(){setTimeout(function(){$('stop').disabled=false},800)});
+  });
+
+  $('resume').addEventListener('click',function(){
+    $('logwrap').style.display=''; $('logwrap').open=true;
+    fetch('/api/resume',{method:'POST'}).then(function(r){return r.json()}).then(function(d){
+      if(!d.ok){alert(t('a_resume_err'));return;}
+      $('run').style.display='none'; $('resume').style.display='none'; $('stop').style.display=''; $('stop').disabled=false;
+      setStatus('running');
+      if(poll)clearInterval(poll); poll=setInterval(tick,700); tick();
+    }).catch(function(e){alert(t('a_server')+e)});
   });
 
   function dlEnabled(on){
@@ -875,6 +888,7 @@
       if(d.logs && d.logs.length){$('logwrap').style.display='';$('logbox').textContent=d.logs.join('\n');}
       if(d.running){$('run').style.display='none';$('stop').style.display='';
         if(poll)clearInterval(poll);poll=setInterval(tick,700);}
+      $('resume').style.display=(d.status==='error'&&d.resumable)?'':'none';
       if(d.count){fetch('/api/results').then(function(r){return r.json()}).then(function(res){
         records=res.records||[];renderGrid();dlEnabled(records.length>0);});}
     }).catch(function(){});
