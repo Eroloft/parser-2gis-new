@@ -88,11 +88,23 @@ class HTMLWriter(FileWriter):
         if r['url']:
             buttons.append(f'<a class="btn gis" href="{esc(r["url"])}" target="_blank" rel="noopener">2GIS</a>')
 
+        # Stable per-firm id (2GIS firm id, else the URL, else the name) so the
+        # "Позвонил" flag and comment persist per business in the browser.
+        url = r.get('url') or ''
+        if '/firm/' in url:
+            firm_id = url.split('/firm/', 1)[1].split('?', 1)[0].split('/', 1)[0]
+        else:
+            firm_id = url or r['name']
+
         return (
-            f'<article class="card" data-search="{esc(search_blob)}">'
+            f'<article class="card" data-search="{esc(search_blob)}" data-id="{esc(firm_id)}">'
             f'<div class="card-head"><h2>{esc(r["name"])}</h2>{rating_html}</div>'
             f'{rubrics_html}{meta_html}'
             f'<div class="actions">{"".join(buttons)}</div>'
+            f'<div class="cardfoot">'
+            f'<button class="markbtn" type="button">Позвонил</button>'
+            f'<input class="note" type="text" placeholder="Комментарий…">'
+            f'</div>'
             f'</article>\n'
         )
 
@@ -143,6 +155,15 @@ _PAGE_HEAD = '''<!DOCTYPE html>
   .btn.tg{background:#e8f4fb;border-color:#cfe9f8;color:#1b7fb8}
   .btn.ig{background:#fdeef5;border-color:#f7d3e4;color:var(--ig)}
   .btn.gis{background:#eafaef;border-color:#cdeed7;color:#1e9e4a}
+  .card.done{opacity:.55} .card.done:hover{opacity:.85}
+  .cardfoot{display:flex;gap:8px;align-items:center;margin-top:8px;padding-top:10px;
+    border-top:1px dashed var(--line)}
+  .markbtn{flex:none;font-size:12.5px;font-weight:600;padding:7px 11px;border-radius:9px;
+    border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer}
+  .markbtn.on{background:#eaf7ee;color:#1e9e4a;border-color:#cdeed7}
+  .note{flex:1;min-width:0;font-size:13px;padding:7px 10px;border:1px solid var(--line);
+    border-radius:9px;background:#fff;color:var(--text);outline:none}
+  .note:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(10,132,255,.12)}
   #empty{display:none;text-align:center;color:var(--muted);padding:60px 0;font-size:15px}
   @media (max-width:480px){main{grid-template-columns:1fr}}
 </style>
@@ -181,6 +202,31 @@ _PAGE_TAIL = '''</main>
   }
   q.addEventListener('input',update);
   update();
+
+  // "Позвонил" flag + comment per business, persisted in the browser (localStorage).
+  var STORE={}; try{STORE=JSON.parse(localStorage.getItem('p2gis_crm')||'{}');}catch(_){STORE={};}
+  function save(){try{localStorage.setItem('p2gis_crm',JSON.stringify(STORE));}catch(_){}}
+  cards.forEach(function(card){
+    var id=card.getAttribute('data-id'); if(!id)return;
+    var st=STORE[id]||{}, done=st.status==='called';
+    var btn=card.querySelector('.markbtn'), note=card.querySelector('.note');
+    card.classList.toggle('done',done);
+    if(btn){btn.classList.toggle('on',done); btn.textContent=done?'✓ Позвонил':'Позвонил';}
+    if(note)note.value=st.note||'';
+  });
+  list.addEventListener('click',function(e){
+    var btn=e.target.closest('.markbtn'); if(!btn)return;
+    var card=btn.closest('.card'), id=card.getAttribute('data-id'); if(!id)return;
+    var st=STORE[id]||{}; st.status=(st.status==='called')?'':'called'; STORE[id]=st; save();
+    var done=st.status==='called';
+    card.classList.toggle('done',done); btn.classList.toggle('on',done);
+    btn.textContent=done?'✓ Позвонил':'Позвонил';
+  });
+  list.addEventListener('input',function(e){
+    var note=e.target.closest('.note'); if(!note)return;
+    var card=note.closest('.card'), id=card.getAttribute('data-id'); if(!id)return;
+    var st=STORE[id]||{}; st.note=note.value; STORE[id]=st; save();
+  });
 })();
 </script>
 </body>
