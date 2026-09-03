@@ -162,6 +162,11 @@
   .msel-tools a{color:var(--primary);text-decoration:none}
   .msel-tools a:hover{text-decoration:underline}
   .msel-panel .genCities{border:none;border-radius:0;padding:0;max-height:210px}
+  .distGroup{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--muted);padding:6px 0 2px;margin-top:2px}
+  .distGroup:first-child{margin-top:0}
+  .genDistHint{font-size:12px;color:var(--muted);padding:2px 0}
+  .genCities label .dcustom{margin-left:auto;color:var(--danger);cursor:pointer;font-size:15px;line-height:1;padding:0 2px}
   .genRubList{max-height:210px;overflow:auto;margin-top:7px;display:flex;flex-direction:column;gap:1px}
   .genRubList .ri{font-size:13px;padding:7px 9px;border-radius:7px;cursor:pointer}
   .genRubList .ri:hover{background:#f1f3f8}
@@ -241,6 +246,17 @@
             <div class="msel-panel" id="genCitiesPanel">
               <div class="msel-tools"><a href="#" id="genAll" data-i18n="select_all">барлығын таңдау</a> · <a href="#" id="genNone" data-i18n="reset">тазалау</a></div>
               <div class="genCities" id="genCities"></div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <span data-i18n="district">Аудан (міндетті емес)</span>
+          <div class="msel" id="genDistWrap">
+            <button type="button" class="msel-btn" id="genDistBtn">Аудансыз</button>
+            <div class="msel-panel" id="genDistPanel">
+              <div class="msel-tools"><a href="#" id="genDistAll" data-i18n="select_all">барлығын таңдау</a> · <a href="#" id="genDistNone" data-i18n="reset">тазалау</a></div>
+              <div class="genCities" id="genDists"></div>
+              <input type="text" id="genDistCustom" data-i18n-ph="district_custom_ph" placeholder="Өз ауданыңыз + Enter" autocomplete="off" style="margin-top:7px">
             </div>
           </div>
         </div>
@@ -389,6 +405,8 @@
     kk:{
       urls_label:'Сілтемелер', urls_hint:'Әр жолда бір 2GIS сілтемесі. Бірнеше қала және айдар болуы мүмкін.',
       gen_title:'🔗 Сілтеме жасау', country:'Ел', cities:'Қалалар', select_all:'барлығын таңдау', reset:'тазалау',
+      district:'Аудан (міндетті емес)', no_district:'Аудансыз', district_sel:'Таңдалған аудан: ',
+      district_custom_ph:'Өз ауданыңыз + Enter', dist_pick_city:'Алдымен қаланы таңдаңыз.',
       query:'Сұраныс', query_ph:'Тере бастаңыз: Кафе, Дәріхана…', rubric:'Айдар (міндетті емес)',
       rubric_search_ph:'Айдарды іздеу…', wa_title:'💬 WhatsApp-тарату', wa_mode_label:'Қайда ашу',
       wa_web:'WhatsApp Web (браузерде)', wa_app:'Қосымша / телефон (wa.me)', wa_templates:'Хабарлама үлгілері',
@@ -422,6 +440,8 @@
     ru:{
       urls_label:'Направления', urls_hint:'По одной ссылке 2GIS на строку. Можно несколько городов и рубрик.',
       gen_title:'🔗 Создать ссылки', country:'Страна', cities:'Города', select_all:'выбрать все', reset:'сбросить',
+      district:'Район (необязательно)', no_district:'Без района', district_sel:'Выбрано районов: ',
+      district_custom_ph:'Свой район + Enter', dist_pick_city:'Сначала выберите город.',
       query:'Запрос', query_ph:'Начните печатать: Кафе, Аптеки…', rubric:'Рубрика (необязательно)',
       rubric_search_ph:'Поиск рубрики…', wa_title:'💬 WhatsApp-рассылка', wa_mode_label:'Открывать в',
       wa_web:'WhatsApp Web (в браузере)', wa_app:'Приложение / телефон (wa.me)', wa_templates:'Шаблоны сообщений',
@@ -465,7 +485,7 @@
     document.documentElement.lang=LANG;
     [].forEach.call($('langbtns').querySelectorAll('button'),function(b){b.classList.toggle('on',b.getAttribute('data-lang')===LANG);});
     if(typeof updateCitiesLabel==='function')updateCitiesLabel();
-    if(GEN&&GEN.loaded){renderGenCities();renderGenRubrics();renderGenQueryList();
+    if(GEN&&GEN.loaded){renderGenCities();renderGenDists();renderGenRubrics();renderGenQueryList();
       $('genRubBtn').textContent=GEN.rubCode?GEN.rubLabel:t('no_rubric');}
     setStatus(lastStatus); loadHistory(); renderGrid();
     try{localStorage.setItem('lang',LANG);}catch(_){}
@@ -477,8 +497,13 @@
   function digits(s){return (s||'').replace(/\D/g,'');}
 
   function payload(){
+    // District labels for the URLs currently in the textarea (from the generator).
+    var directions=$('urls').value.split('\n').map(function(s){return s.trim();})
+      .filter(Boolean).filter(function(u){return LINKMETA[u];})
+      .map(function(u){return {url:u,label:LINKMETA[u]};});
     return {
       urls: $('urls').value.split('\n'),
+      directions: directions,
       max_records: parseInt($('maxrec').value||'50',10),
       headless: $('headless').checked,
       clean: $('clean').checked,
@@ -772,7 +797,11 @@
   });
 
   // ---- Link generator ----
-  var GEN={cities:[],rubrics:[],loaded:false,rubCode:'',rubLabel:''};
+  // Remembers the district each generated URL targets, so Excel export can put
+  // every district on its own sheet. Keyed by the exact URL string.
+  var LINKMETA={}; try{LINKMETA=JSON.parse(localStorage.getItem('p2gis_linkmeta')||'{}');}catch(_){LINKMETA={};}
+  function saveLinkMeta(){try{localStorage.setItem('p2gis_linkmeta',JSON.stringify(LINKMETA));}catch(_){}}
+  var GEN={cities:[],rubrics:[],districts:{},customDists:[],loaded:false,rubCode:'',rubLabel:''};
   function isRu(){return $('genCountry').value==='ru';}
   function renderGenCities(){
     var cc=$('genCountry').value;
@@ -785,6 +814,42 @@
   function updateCitiesLabel(){
     var n=$('genCities').querySelectorAll('input:checked').length;
     $('genCitiesBtn').textContent=n?(t('cities_sel')+n):t('cities_btn');
+  }
+  // Cities currently checked in the generator: [{code, domain, name}].
+  function selectedGenCities(){
+    return [].map.call($('genCities').querySelectorAll('input:checked'),function(i){
+      return {code:i.getAttribute('data-code'),domain:i.getAttribute('data-domain'),
+        name:i.parentNode.textContent.trim()};
+    });
+  }
+  // Districts panel: curated districts grouped by the selected cities + custom ones.
+  function renderGenDists(){
+    var cities=selectedGenCities(), box=$('genDists'), html='';
+    var multi=cities.length>1;
+    // Preserve which curated districts were already checked across re-renders.
+    var wasChecked={};
+    [].forEach.call(box.querySelectorAll('input[data-city]:checked'),function(i){
+      wasChecked[i.getAttribute('data-city')+' '+i.getAttribute('data-name')]=1;});
+    cities.forEach(function(c){
+      var ds=GEN.districts[c.code]||[];
+      if(!ds.length)return;
+      if(multi)html+='<div class="distGroup">'+esc(c.name)+'</div>';
+      html+=ds.map(function(d){
+        var on=wasChecked[c.code+' '+d]?' checked':'';
+        return '<label><input type="checkbox" data-city="'+esc(c.code)+'" data-name="'+esc(d)+'"'+on+'> '+esc(d)+'</label>';
+      }).join('');
+    });
+    GEN.customDists.forEach(function(d){
+      html+='<label><input type="checkbox" data-custom="1" data-name="'+esc(d)+'" checked> '+esc(d)+
+        '<span class="dcustom" data-remove="'+esc(d)+'" title="✕">×</span></label>';
+    });
+    if(!html && !cities.length)html='<div class="genDistHint">'+t('dist_pick_city')+'</div>';
+    box.innerHTML=html;
+    updateDistLabel();
+  }
+  function updateDistLabel(){
+    var n=$('genDists').querySelectorAll('input:checked').length;
+    $('genDistBtn').textContent=n?(t('district_sel')+n):t('no_district');
   }
   function curRubrics(){var ru=isRu();return GEN.rubrics.filter(function(r){return ru?r.is_russian:r.is_non_russian;});}
   function renderGenRubrics(){
@@ -806,10 +871,10 @@
   function loadGenerator(){
     if(GEN.loaded)return;
     fetch('/api/generator').then(function(r){return r.json()}).then(function(d){
-      GEN.cities=d.cities; GEN.rubrics=d.rubrics; GEN.loaded=true;
+      GEN.cities=d.cities; GEN.rubrics=d.rubrics; GEN.districts=d.districts||{}; GEN.loaded=true;
       $('genCountry').innerHTML=d.countries.map(function(c){
         return '<option value="'+esc(c.code)+'"'+(c.code==='kz'?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
-      renderGenCities(); renderGenRubrics(); renderGenQueryList();
+      renderGenCities(); renderGenDists(); renderGenRubrics(); renderGenQueryList();
     }).catch(function(){});
   }
   $('gen').addEventListener('toggle',function(){if($('gen').open)loadGenerator();});
@@ -818,8 +883,8 @@
     $('genRubBtn').textContent=code?label:t('no_rubric');
   }
   $('genCountry').addEventListener('change',function(){
-    setRubric('',''); $('genRubricSearch').value='';
-    renderGenCities();renderGenRubrics();renderGenQueryList();});
+    setRubric('',''); $('genRubricSearch').value=''; GEN.customDists=[];
+    renderGenCities();renderGenDists();renderGenRubrics();renderGenQueryList();});
   $('genRubricSearch').addEventListener('input',renderGenRubrics);
   $('genRubList').addEventListener('click',function(e){
     var ri=e.target.closest('.ri'); if(!ri)return;
@@ -837,14 +902,36 @@
   }
   $('genCitiesBtn').addEventListener('click',function(e){e.stopPropagation();toggleMsel($('genCitiesWrap'));});
   $('genRubBtn').addEventListener('click',function(e){e.stopPropagation();toggleMsel($('genRubWrap'));});
+  $('genDistBtn').addEventListener('click',function(e){e.stopPropagation();toggleMsel($('genDistWrap'));});
   $('genCitiesPanel').addEventListener('click',function(e){e.stopPropagation();});
   $('genRubPanel').addEventListener('click',function(e){e.stopPropagation();});
-  $('genCities').addEventListener('change',updateCitiesLabel);
+  $('genDistPanel').addEventListener('click',function(e){e.stopPropagation();});
+  // District picker: label update, select-all/none, custom add + remove.
+  $('genDists').addEventListener('change',updateDistLabel);
+  $('genDists').addEventListener('click',function(e){
+    var rm=e.target.closest('[data-remove]'); if(!rm)return;
+    e.preventDefault();
+    var name=rm.getAttribute('data-remove');
+    GEN.customDists=GEN.customDists.filter(function(d){return d!==name;});
+    renderGenDists();
+  });
+  $('genDistAll').addEventListener('click',function(e){e.preventDefault();
+    [].forEach.call($('genDists').querySelectorAll('input'),function(i){i.checked=true;});updateDistLabel();});
+  $('genDistNone').addEventListener('click',function(e){e.preventDefault();
+    [].forEach.call($('genDists').querySelectorAll('input'),function(i){i.checked=false;});updateDistLabel();});
+  $('genDistCustom').addEventListener('keydown',function(e){
+    if(e.key!=='Enter')return;
+    e.preventDefault();
+    var v=this.value.trim(); if(!v)return;
+    if(GEN.customDists.indexOf(v)<0)GEN.customDists.push(v);
+    this.value=''; renderGenDists();
+  });
+  $('genCities').addEventListener('change',function(){updateCitiesLabel();renderGenDists();});
   document.addEventListener('click',function(){[].forEach.call(document.querySelectorAll('.msel.open'),function(m){m.classList.remove('open');});});
   $('genAll').addEventListener('click',function(e){e.preventDefault();
-    [].forEach.call($('genCities').querySelectorAll('input'),function(i){i.checked=true;});updateCitiesLabel();});
+    [].forEach.call($('genCities').querySelectorAll('input'),function(i){i.checked=true;});updateCitiesLabel();renderGenDists();});
   $('genNone').addEventListener('click',function(e){e.preventDefault();
-    [].forEach.call($('genCities').querySelectorAll('input'),function(i){i.checked=false;});updateCitiesLabel();});
+    [].forEach.call($('genCities').querySelectorAll('input'),function(i){i.checked=false;});updateCitiesLabel();renderGenDists();});
   $('genAdd').addEventListener('click',function(){
     var q=$('genQuery').value.trim();
     if(!q){alert(t('a_need_query'));return;}
@@ -854,12 +941,27 @@
     var existing=$('urls').value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
     var seen={}; existing.forEach(function(u){seen[u]=1;});
     var added=0;
-    [].forEach.call(checked,function(i){
-      var url='https://2gis.'+i.getAttribute('data-domain')+'/'+i.getAttribute('data-code')+
-        '/search/'+encodeURIComponent(q)+(code?'/rubricId/'+code:'')+'/filters/sort=name';
+    // Custom districts apply to every selected city; curated ones only to their own city.
+    var customChecked=[].map.call($('genDists').querySelectorAll('input[data-custom]:checked'),
+      function(i){return i.getAttribute('data-name');});
+    function build(domain,cityCode,district){
+      var query=district?(q+' '+district):q;
+      var url='https://2gis.'+domain+'/'+cityCode+
+        '/search/'+encodeURIComponent(query)+(code?'/rubricId/'+code:'')+'/filters/sort=name';
       if(!seen[url]){existing.push(url);seen[url]=1;added++;}
+      if(district)LINKMETA[url]=district;  // tag for per-district Excel sheets
+    }
+    [].forEach.call(checked,function(i){
+      var cityCode=i.getAttribute('data-code'), domain=i.getAttribute('data-domain');
+      var dists=[].map.call(
+        $('genDists').querySelectorAll('input[data-city="'+cityCode+'"]:checked'),
+        function(d){return d.getAttribute('data-name');}
+      ).concat(customChecked);
+      if(!dists.length){build(domain,cityCode,'');}
+      else dists.forEach(function(d){build(domain,cityCode,d);});
     });
     $('urls').value=existing.join('\n');
+    saveLinkMeta();
     var btn=$('genAdd'); btn.textContent=t('added')+added;
     setTimeout(function(){btn.textContent=t('add_links');},1300);
   });

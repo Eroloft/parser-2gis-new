@@ -28,7 +28,8 @@ class History:
     restarts. Each entry keeps the raw catalog documents so it can be re-rendered
     as cards and re-exported to any format later.
     """
-    def save(self, urls: list[str], docs: list[Any], writer_options: dict) -> Optional[str]:
+    def save(self, urls: list[str], docs: list[Any], writer_options: dict,
+             labels: Optional[list[Optional[str]]] = None) -> Optional[str]:
         if not docs:
             return None
         hid = datetime.now().strftime('%Y%m%d-%H%M%S-%f')
@@ -39,6 +40,8 @@ class History:
             'count': len(docs),
             'writer': writer_options,
             'docs': docs,
+            # Per-document district labels (aligned with `docs`) for sheet splitting.
+            'labels': labels or [],
         }
         try:
             with open(_history_dir() / f'{hid}.json', 'w', encoding='utf-8') as f:
@@ -81,6 +84,10 @@ class History:
     def writer_options(self, hid: str) -> dict:
         d = self._load(hid)
         return (d or {}).get('writer', {}) or {}
+
+    def labels(self, hid: str) -> list:
+        d = self._load(hid)
+        return (d or {}).get('labels', []) or []
 
     def records(self, hid: str) -> list[dict]:
         out = []

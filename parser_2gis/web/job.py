@@ -26,6 +26,10 @@ class CollectorWriter(FileWriter):
     def __init__(self, writer_options) -> None:
         super().__init__('', writer_options)
         self.docs: list[Any] = []
+        # District/sheet label for the URL currently being parsed; kept aligned
+        # with `docs` so the export can split results onto separate sheets.
+        self.labels: list[Optional[str]] = []
+        self.current_label: Optional[str] = None
 
     def __enter__(self) -> 'CollectorWriter':
         return self
@@ -37,6 +41,7 @@ class CollectorWriter(FileWriter):
         if not self._check_catalog_doc(catalog_doc):
             return
         self.docs.append(catalog_doc)
+        self.labels.append(self.current_label)
         if self._options.verbose:
             record = extract_record(catalog_doc)
             logger.info('Парсинг [%d] > %s', len(self.docs),
@@ -79,7 +84,8 @@ class ParseJob:
     def count(self) -> int:
         return len(self.collector.docs) if self.collector else 0
 
-    def start(self, config: Configuration, urls: list[str]) -> None:
+    def start(self, config: Configuration, urls: list[str],
+              labels: Optional[dict[str, str]] = None) -> None:
         with self._lock:
             if self.running:
                 raise RuntimeError('Парсинг уже запущен')
@@ -89,7 +95,8 @@ class ParseJob:
             self._cancelled = False
             self.collector = CollectorWriter(config.writer)
 
-        self._thread = threading.Thread(target=self._run, args=(config, urls), daemon=True)
+        self._thread = threading.Thread(target=self._run, args=(config, urls, labels or {}),
+                                        daemon=True)
         self._thread.start()
 
     def stop(self) -> None:
@@ -112,7 +119,9 @@ class ParseJob:
             self.status = 'idle'
             return True
 
-    def _run(self, config: Configuration, urls: list[str]) -> None:
+    def _run(self, config: Configuration, urls: list[str],
+             labels: Optional[dict[str, str]] = None) -> None:
+        labels = labels or {}
         handler = _ListLogHandler(self.logs)
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)  # ensure INFO progress lines are captured
@@ -123,19 +132,38 @@ class ParseJob:
                 writer = FilterWriter(self.collector, config.filters)
 
             logger.info('Парсинг запущен.')
+            failed = 0
             with writer:
                 for url in urls:
                     if self._cancelled:
                         break
+                    # Tag documents from this URL with its district sheet label.
+                    self.collector.current_label = labels.get(url)
                     logger.info('Парсинг ссылки %s', url)
-                    self._parser = get_parser(url, chrome_options=config.chrome,
-                                              parser_options=config.parser)
-                    with self._parser:
-                        if not self._cancelled:
-                            self._parser.parse(writer)
+                    try:
+                        self._parser = get_parser(url, chrome_options=config.chrome,
+                                                  parser_options=config.parser)
+                        with self._parser:
+                            if not self._cancelled:
+                                self._parser.parse(writer)
+                    except Exception as e:
+                        # A single URL failing (e.g. 2GIS anti-bot timeout) must not
+                        # abort the whole run — log it, keep what it collected, and
+                        # continue with the remaining URLs.
+                        if self._cancelled:
+                            break  # clean stop, not a failure
+                        failed += 1
+                        logger.error('Ссылка пропущена из-за ошибки: %s', e)
+                        continue
 
             self.status = 'stopped' if self._cancelled else 'done'
-            logger.info('Парсинг %s.', 'остановлен' if self._cancelled else 'завершён')
+            if self._cancelled:
+                logger.info('Парсинг остановлен.')
+            elif failed:
+                logger.warning('Готово частично: %d из %d ссылок не обработаны.', failed, len(urls))
+                logger.info('Парсинг завершён.')
+            else:
+                logger.info('Парсинг завершён.')
         except Exception as e:
             if self._cancelled:
                 # Stopping closes the browser tab mid-request, surfacing as
@@ -148,12 +176,13 @@ class ParseJob:
                 logger.error('Ошибка во время работы парсера.', exc_info=True)
         finally:
             self._parser = None
-            # Persist whatever was collected — full run or partial stop — so the
-            # records survive reloads and aren't lost when the user hits Stop.
-            if self.status in ('done', 'stopped') and self.collector and self.collector.docs:
+            # Persist whatever was collected — full run, partial stop, or a crash
+            # mid-run — so records survive reloads and aren't lost on Stop/error.
+            if self.status in ('done', 'stopped', 'error') and self.collector and self.collector.docs:
                 try:
                     History().save(urls, self.collector.docs,
-                                   self.collector._options.model_dump(mode='json'))
+                                   self.collector._options.model_dump(mode='json'),
+                                   self.collector.labels)
                 except Exception as e:
                     logger.error('Не удалось сохранить историю: %s', e)
             logger.removeHandler(handler)

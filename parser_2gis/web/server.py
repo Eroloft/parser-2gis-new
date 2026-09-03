@@ -11,8 +11,12 @@ from ..config import Configuration
 from ..logger import logger
 from ..paths import data_path
 from ..writer import WriterOptions, get_writer
+from ..writer.writers import write_multisheet_xlsx
 from .history import History
 from .job import ParseJob
+
+# Sheet name for documents that carry no district label (manual URLs, etc.).
+_DEFAULT_SHEET = 'Прочее'
 
 # Download file names per format.
 _DOWNLOAD_NAMES = {'csv': '2gis.csv', 'xlsx': '2gis.xlsx',
@@ -35,6 +39,16 @@ def _load_cities() -> list[dict[str, Any]]:
 
 
 @lru_cache(maxsize=1)
+def _load_districts() -> dict[str, list[str]]:
+    """District names keyed by city code (for the generator picker)."""
+    try:
+        with open(data_path() / 'districts.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+@lru_cache(maxsize=1)
 def _load_rubrics() -> list[dict[str, Any]]:
     """Flat list of rubrics for the web generator picker."""
     with open(data_path() / 'rubrics.json', 'r', encoding='utf-8') as f:
@@ -51,6 +65,39 @@ def _load_rubrics() -> list[dict[str, Any]]:
             'is_non_russian': bool(node.get('isNonRussian', True)),
         })
     out.sort(key=lambda r: r['label'].lower())
+    return out
+
+
+def _group_by_label(docs: list[Any], labels: Any) -> list[tuple[str, list[Any]]]:
+    """Group documents by their district label, preserving first-seen order.
+
+    Documents without a label fall into a single default sheet. Returns a list
+    of (sheet_name, docs) pairs.
+    """
+    labels = list(labels or [])
+    labels += [None] * (len(docs) - len(labels))  # tolerate missing/short labels
+    order: list[str] = []
+    groups: dict[str, list[Any]] = {}
+    for doc, label in zip(docs, labels):
+        key = label if label else _DEFAULT_SHEET
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(doc)
+    return [(k, groups[k]) for k in order]
+
+
+def _labels_from_request(data: dict[str, Any]) -> dict[str, str]:
+    """URL -> district label map from the request's `directions` payload."""
+    out: dict[str, str] = {}
+    for d in (data.get('directions') or []):
+        try:
+            url = str(d.get('url', '')).strip()
+            label = str(d.get('label', '')).strip()
+        except (AttributeError, TypeError):
+            continue
+        if url and label:
+            out[url] = label
     return out
 
 
@@ -105,13 +152,25 @@ def create_app():
     job = ParseJob()
     history = History()
 
-    def _export_send(docs, writer_opts: WriterOptions, fmt: str):
-        """Write `docs` to a temp file in `fmt` and send it as a download."""
+    def _export_send(docs, writer_opts: WriterOptions, fmt: str, labels=None):
+        """Write `docs` to a temp file in `fmt` and send it as a download.
+
+        When district `labels` split the documents into two or more groups, XLSX
+        exports place each district on its own worksheet.
+        """
         tmp_dir = tempfile.mkdtemp(prefix='p2gis_web_')
         out_path = os.path.join(tmp_dir, _DOWNLOAD_NAMES[fmt])
-        with get_writer(out_path, fmt, writer_opts) as writer:
-            for doc in docs:
-                writer.write(doc)
+
+        groups = _group_by_label(docs, labels)
+        # Split into per-district sheets whenever any district label is present,
+        # even for a single district (so a partial run still names its sheet).
+        has_district = any(name != _DEFAULT_SHEET for name, _ in groups)
+        if fmt == 'xlsx' and has_district:
+            write_multisheet_xlsx(out_path, groups, writer_opts)
+        else:
+            with get_writer(out_path, fmt, writer_opts) as writer:
+                for doc in docs:
+                    writer.write(doc)
         return send_file(out_path, as_attachment=True, download_name=_DOWNLOAD_NAMES[fmt])
 
     @app.route('/')
@@ -126,7 +185,7 @@ def create_app():
             return jsonify({'ok': False, 'error': 'Не указаны ссылки'}), 400
         try:
             config = _build_config(data)
-            job.start(config, urls)
+            job.start(config, urls, _labels_from_request(data))
         except RuntimeError as e:
             return jsonify({'ok': False, 'error': str(e)}), 409
         except Exception as e:
@@ -170,7 +229,8 @@ def create_app():
         ]
         countries = [{'code': k, 'name': v} for k, v in COUNTRIES.items()]
         countries.sort(key=lambda c: c['name'])
-        return jsonify({'countries': countries, 'cities': cities, 'rubrics': _load_rubrics()})
+        return jsonify({'countries': countries, 'cities': cities,
+                        'rubrics': _load_rubrics(), 'districts': _load_districts()})
 
     @app.route('/api/download')
     def api_download():
@@ -182,7 +242,8 @@ def create_app():
 
         try:
             assert job.collector is not None
-            return _export_send(job.collector.docs, job.collector._options, fmt)
+            return _export_send(job.collector.docs, job.collector._options, fmt,
+                                job.collector.labels)
         except Exception as e:
             logger.error('Ошибка экспорта: %s', e)
             return jsonify({'ok': False, 'error': str(e)}), 500
@@ -211,7 +272,7 @@ def create_app():
         except Exception:
             opts = WriterOptions()
         try:
-            return _export_send(docs, opts, fmt)
+            return _export_send(docs, opts, fmt, history.labels(hid))
         except Exception as e:
             logger.error('Ошибка экспорта истории: %s', e)
             return jsonify({'ok': False, 'error': str(e)}), 500
