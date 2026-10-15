@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from typing import Any
 
 import pydantic
@@ -129,6 +130,7 @@ def parse_arguments() -> tuple[argparse.Namespace, Configuration]:
     p_parser.add_argument('--parser.max-records', metavar='{1000,2000,...}', help='Максимальное количество спарсенных записей с одного URL')
     p_parser.add_argument('--parser.skip-404-response', metavar='{yes,no}', help='Пропускать ссылки вернувшие сообщение "Точных совпадений нет / Не найдено"')
     p_parser.add_argument('--parser.delay_between_clicks', metavar='{0,100,...}', help='Задержка между кликами по записям (миллисекунд)')
+    p_parser.add_argument('--parser.api-key', metavar='KEY', help='Ключ официального Places API 2GIS (безопаснее передать через PARSER2GIS_API_KEY)')
 
     other_parser = arg_parser.add_argument_group('Прочие аргументы')
     other_parser.add_argument('--writer.verbose', metavar='{yes,no}', help='Отображать наименования позиций во время парсинга')
@@ -170,4 +172,5 @@ def main() -> None:
         return
 
     from .web import run_server
-    run_server(port=getattr(args, 'web_port', 8666))
+    open_browser = os.getenv('PARSER2GIS_NO_BROWSER') != '1'
+    run_server(port=getattr(args, 'web_port', 8666), open_browser=open_browser)

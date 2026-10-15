@@ -27,6 +27,8 @@ class FirmParser(MainParser):
         """
         # Go URL
         self._chrome_remote.navigate(self._url, referer='https://google.com', timeout=120)
+        self._wait_page_ready()
+        self._raise_if_access_blocked()
 
         # Document loaded, get its response
         responses = self._chrome_remote.get_responses(timeout=5)
@@ -42,9 +44,6 @@ class FirmParser(MainParser):
 
             if self._options.skip_404_response:
                 return
-
-        # Wait all 2GIS requests get finished
-        self._wait_requests_finished()
 
         # Gather response and collect useful payload.
         initial_state = self._chrome_remote.execute_script('window.initialState')

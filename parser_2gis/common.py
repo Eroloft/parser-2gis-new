@@ -50,7 +50,10 @@ def wait_until_finished(timeout: int | None = None,
                 if timeout is not None:
                     if time.time() - call_time > timeout:
                         if throw_exception:
-                            raise TimeoutError(func)
+                            function_name = getattr(func, '__qualname__', func.__name__)
+                            raise TimeoutError(
+                                f'Операция {function_name} не завершилась за {timeout} с.'
+                            )
                         return ret
 
                 time.sleep(poll_interval)

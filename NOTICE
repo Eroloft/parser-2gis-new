@@ -1,0 +1,16 @@
+Parser2GIS — уведомление об авторстве и лицензии
+
+Оригинальный проект parser-2gis:
+Copyright © Andy Trofimov <interlark@gmail.com>
+https://github.com/interlark/parser-2gis
+
+Использованный форк parser-2gis-new:
+https://github.com/Eroloft/parser-2gis-new
+
+Изменения Intel macOS сохраняют указанные уведомления об авторстве.
+Программа распространяется на условиях GNU Lesser General Public License
+версии 3 или более поздней (LGPL-3.0-or-later). Полный текст находится в LICENSE.
+
+При передаче бинарной сборки передавайте вместе с ней LICENSE, этот NOTICE и
+ссылку/копию соответствующего исходного кода, включая внесённые изменения.
+

@@ -1,9 +1,8 @@
-import distutils.cmd
 import pathlib
 import re
 import sys
 
-from setuptools import find_packages, setup
+from setuptools import Command, find_packages, setup
 
 
 PACKAGE_NAME = 'parser_2gis'
@@ -20,7 +19,7 @@ assert match
 version = match.group('version')
 
 
-class BuildStandaloneCommand(distutils.cmd.Command):
+class BuildStandaloneCommand(Command):
     """A custom command to build standalone app."""
     description = 'Build standalone app with PyInstaller'
     user_options = []
@@ -43,9 +42,9 @@ class BuildStandaloneCommand(distutils.cmd.Command):
 
             # Dist
             build_cmd = [
-                'pyinstaller',
-                '--clean',
-                '--onefile',
+                sys.executable, '-m', 'PyInstaller',
+                '--clean', '--noconfirm',
+                '--onedir',
                 '--windowed',
                 '-n', dist_filename,
             ]
@@ -58,6 +57,7 @@ class BuildStandaloneCommand(distutils.cmd.Command):
             elif sys.platform.startswith('darwin'):
                 build_cmd += [
                     '--icon', 'parser_2gis/data/images/icon.icns',
+                    '--target-architecture', 'x86_64',
                 ]
 
             # Add data (reference data + bundled web dashboard assets).
@@ -93,11 +93,12 @@ if __name__ == '__main__':
         include_package_data=True,
         python_requires='>=3.8',
         keywords='parser scraper 2gis',
-        url='https://github.com/interlark/parser-2gis',
+        url='https://github.com/Eroloft/parser-2gis-new',
         project_urls={
             'Documentation': 'https://github.com/interlark/parser-2gis/wiki',
-            'GitHub': 'https://github.com/interlark/parser-2gis',
-            'Changelog': 'https://github.com/interlark/parser-2gis/blob/main/CHANGELOG.md',
+            'Upstream': 'https://github.com/interlark/parser-2gis',
+            'GitHub': 'https://github.com/Eroloft/parser-2gis-new',
+            'Changelog': 'https://github.com/Eroloft/parser-2gis-new/blob/main/CHANGELOG.md',
         },
         install_requires=[
             'pychrome>=0.2.4',

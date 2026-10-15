@@ -6,9 +6,11 @@ import tempfile
 import webbrowser
 from functools import lru_cache
 from typing import Any
+from urllib.parse import urlparse
 
 from ..config import Configuration
 from ..logger import logger
+from ..parser import is_supported_url
 from ..paths import data_path
 from ..writer import WriterOptions, get_writer
 from ..writer.writers import write_multisheet_xlsx
@@ -21,6 +23,10 @@ _DEFAULT_SHEET = 'Прочее'
 # Download file names per format.
 _DOWNLOAD_NAMES = {'csv': '2gis.csv', 'xlsx': '2gis.xlsx',
                    'json': '2gis.json', 'html': '2gis.html'}
+
+_MAX_URLS_PER_JOB = 100
+_MAX_RECORDS_PER_URL = 5000
+_MIN_CLICK_DELAY_MS = 500
 
 # Country code -> human name (for the link generator).
 COUNTRIES = {
@@ -101,11 +107,47 @@ def _labels_from_request(data: dict[str, Any]) -> dict[str, str]:
     return out
 
 
+def _validated_urls(values: Any) -> list[str]:
+    """Return unique public 2GIS URLs or raise a user-facing error."""
+    allowed_hosts = {'2gis.com'}
+    allowed_hosts.update(f"2gis.{city['domain']}" for city in _load_cities())
+    urls: list[str] = []
+    seen: set[str] = set()
+    for value in values or []:
+        url = str(value or '').strip()
+        if not url or url in seen:
+            continue
+        parsed = urlparse(url)
+        host = (parsed.hostname or '').lower()
+        if parsed.scheme not in ('http', 'https') or host not in allowed_hosts:
+            raise ValueError('Допустимы только ссылки вида https://2gis.<домен>/...')
+        if not is_supported_url(url):
+            raise ValueError(
+                'Неподдерживаемая ссылка 2GIS. Укажите ссылку поиска '
+                '(/search/...), карточки организации (/firm/...) или списка '
+                'организаций в здании (/inside/...). Страницы города без '
+                'рубрики или поискового запроса собирать нельзя.'
+            )
+        seen.add(url)
+        urls.append(url)
+    if not urls:
+        raise ValueError('Не указаны ссылки')
+    if len(urls) > _MAX_URLS_PER_JOB:
+        raise ValueError(f'За один запуск допускается не более {_MAX_URLS_PER_JOB} ссылок')
+    return urls
+
+
 def _build_config(data: dict[str, Any]) -> Configuration:
     """Build a Configuration from the web request payload."""
     config = Configuration()
     config.chrome.headless = bool(data.get('headless', True))
-    config.parser.max_records = max(1, int(data.get('max_records', 100)))
+    # The key exists only in this in-memory job configuration. ParserOptions
+    # excludes it from model serialization, config files, and history.
+    config.parser.api_key = str(
+        data.get('api_key') or config.parser.api_key or ''
+    ).strip()
+    config.parser.max_records = min(
+        _MAX_RECORDS_PER_URL, max(1, int(data.get('max_records', 100))))
     config.writer.csv.clean = bool(data.get('clean', True))
 
     adv = data.get('advanced', {}) or {}
@@ -115,7 +157,10 @@ def _build_config(data: dict[str, Any]) -> Configuration:
         if adv.get('memory_limit'):
             config.chrome.memory_limit = max(1, int(adv['memory_limit']))
         config.parser.skip_404_response = bool(adv.get('skip_404_response', config.parser.skip_404_response))
-        config.parser.delay_between_clicks = max(0, int(adv.get('delay_between_clicks', 0) or 0))
+        config.parser.delay_between_clicks = max(
+            _MIN_CLICK_DELAY_MS,
+            int(adv.get('delay_between_clicks', config.parser.delay_between_clicks) or 0),
+        )
         config.writer.csv.add_rubrics = bool(adv.get('add_rubrics', config.writer.csv.add_rubrics))
         config.writer.csv.add_comments = bool(adv.get('add_comments', config.writer.csv.add_comments))
         config.writer.csv.remove_empty_columns = bool(adv.get('remove_empty_columns', config.writer.csv.remove_empty_columns))
@@ -180,10 +225,8 @@ def create_app():
     @app.route('/api/start', methods=['POST'])
     def api_start():
         data = request.get_json(force=True, silent=True) or {}
-        urls = [u.strip() for u in (data.get('urls') or []) if u and u.strip()]
-        if not urls:
-            return jsonify({'ok': False, 'error': 'Не указаны ссылки'}), 400
         try:
+            urls = _validated_urls(data.get('urls'))
             config = _build_config(data)
             job.start(config, urls, _labels_from_request(data))
         except RuntimeError as e:

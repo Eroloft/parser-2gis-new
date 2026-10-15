@@ -8,6 +8,14 @@ import pytest
 from parser_2gis import main as parser_main
 
 
+# These are genuine 2GIS integration checks. Keep ordinary test runs
+# deterministic and low-impact; opt in explicitly when live access is allowed.
+pytestmark = pytest.mark.skipif(
+    os.getenv('PARSER2GIS_RUN_LIVE_TESTS') != '1',
+    reason='live 2GIS check is opt-in (PARSER2GIS_RUN_LIVE_TESTS=1)',
+)
+
+
 def check_csv_result(result_path, num_records):
     """Check CSV output.
 

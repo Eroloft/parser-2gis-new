@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Optional
 from ...chrome import ChromeRemote
 from ...common import wait_until_finished
 from ...logger import logger
+from ..exceptions import ParserAccessBlocked
 from ..utils import blocked_requests
 
 if TYPE_CHECKING:
@@ -43,9 +44,6 @@ class MainParser:
                                            response_patterns=response_patterns)
         self._chrome_remote.start()
 
-        # Add counter for 2GIS requsts
-        self._add_xhr_counter()
-
         # Disable specific requests
         blocked_urls = blocked_requests(extended=chrome_options.disable_images)
         self._chrome_remote.add_blocked_requests(blocked_urls)
@@ -73,35 +71,52 @@ class MainParser:
         dom_tree = self._chrome_remote.get_document()
         return dom_tree.search(valid_link)
 
-    def _add_xhr_counter(self) -> None:
-        """Inject old-school wrapper around XMLHttpRequest,
-        to keep track of all pending requests to 2GIS website."""
-        xhr_script = r'''
-            (function() {
-                var oldOpen = XMLHttpRequest.prototype.open;
-                XMLHttpRequest.prototype.open = function(method, url, async, user, pass) {
-                    if (url.match(/^https?\:\/\/[^\/]*2gis\.[a-z]+/i)) {
-                        if (window.openHTTPs == undefined) {
-                            window.openHTTPs = 1;
-                        } else {
-                            window.openHTTPs++;
-                        }
-                        this.addEventListener("readystatechange", function() {
-                            if (this.readyState == 4) {
-                                window.openHTTPs--;
-                            }
-                        }, false);
-                    }
-                    oldOpen.call(this, method, url, async, user, pass);
-                }
-            })();
-        '''
-        self._chrome_remote.add_start_script(xhr_script)
+    @wait_until_finished(timeout=15, throw_exception=False)
+    def _page_is_ready(self) -> bool:
+        """Wait for the document, not for every background request.
 
-    @wait_until_finished(timeout=120)
-    def _wait_requests_finished(self) -> bool:
-        """Wait for all pending requests."""
-        return self._chrome_remote.execute_script('window.openHTTPs == 0')
+        Current 2GIS pages keep telemetry and other requests open, so waiting
+        for a global XMLHttpRequest counter to reach zero can hang forever.
+        Link discovery below has its own bounded polling and is the meaningful
+        readiness check for parsing.
+        """
+        return bool(self._chrome_remote.execute_script(
+            "document.readyState === 'interactive' || "
+            "document.readyState === 'complete'"
+        ))
+
+    def _wait_page_ready(self) -> bool:
+        ready = self._page_is_ready()
+        if not ready:
+            logger.warning(
+                'Страница 2GIS не сообщила о полной загрузке за 15 с; '
+                'продолжаем с уже доступным содержимым.'
+            )
+        return ready
+
+    def _raise_if_access_blocked(self) -> None:
+        """Stop with an explicit error when 2GIS displays an access challenge.
+
+        The project intentionally does not solve, hide, or bypass CAPTCHA.
+        """
+        title = str(self._chrome_remote.execute_script('document.title') or '')
+        body = str(self._chrome_remote.execute_script(
+            "document.body ? document.body.innerText.slice(0, 2000) : ''"
+        ) or '')
+        page_text = f'{title}\n{body}'.lower()
+        captcha_markers = (
+            '2gis captcha',
+            'подозрительную активность',
+            'подтвердить, что вы не робот',
+            'suspicious activity',
+            'confirm that you are not a robot',
+        )
+        if any(marker in page_text for marker in captcha_markers):
+            raise ParserAccessBlocked(
+                '2GIS показал CAPTCHA или ограничил доступ для текущего IP. '
+                'Сбор остановлен: Parser2GIS не обходит CAPTCHA. '
+                'Повторите позже или обратитесь в поддержку 2GIS.'
+            )
 
     def _get_available_pages(self) -> dict[int, DOMNode]:
         """Get available pages to navigate."""
@@ -157,6 +172,8 @@ class MainParser:
 
         # Go URL
         self._chrome_remote.navigate(url, referer='https://google.com', timeout=120)
+        self._wait_page_ready()
+        self._raise_if_access_blocked()
 
         # Document loaded, get its response
         responses = self._chrome_remote.get_responses(timeout=5)
@@ -192,8 +209,9 @@ class MainParser:
             return links
 
         while True:
-            # Wait all 2GIS requests get finished
-            self._wait_requests_finished()
+            # Wait for the document. Long-lived background requests are ignored.
+            self._wait_page_ready()
+            self._raise_if_access_blocked()
 
             # Gather links to be clicked
             links = get_unique_links()

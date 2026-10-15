@@ -7,6 +7,7 @@ from typing import Any, Optional
 from ..config import Configuration
 from ..logger import logger
 from ..parser import get_parser
+from ..parser.exceptions import ParserAccessBlocked
 from ..writer import FilterWriter, get_writer
 from ..writer.filters import any_filter_enabled
 from ..writer.record import extract_record
@@ -71,7 +72,7 @@ class ParseJob:
         self._thread: Optional[threading.Thread] = None
         self._parser = None
         self._cancelled = False
-        self.status = 'idle'  # idle | running | done | stopped | error
+        self.status = 'idle'  # idle | running | done | partial | stopped | error
         self.logs: list[str] = []
         self.error: Optional[str] = None
         self.collector: Optional[CollectorWriter] = None
@@ -133,6 +134,7 @@ class ParseJob:
 
             logger.info('Парсинг запущен.')
             failed = 0
+            blocked_error: Optional[str] = None
             with writer:
                 for url in urls:
                     if self._cancelled:
@@ -146,6 +148,14 @@ class ParseJob:
                         with self._parser:
                             if not self._cancelled:
                                 self._parser.parse(writer)
+                    except ParserAccessBlocked as e:
+                        # CAPTCHA/access restrictions apply to the current IP,
+                        # so trying every remaining URL would only add load and
+                        # repeat the same failure.
+                        failed += 1
+                        blocked_error = str(e)
+                        logger.error('Сбор остановлен из-за ограничения 2GIS: %s', e)
+                        break
                     except Exception as e:
                         # A single URL failing (e.g. 2GIS anti-bot timeout) must not
                         # abort the whole run — log it, keep what it collected, and
@@ -156,11 +166,23 @@ class ParseJob:
                         logger.error('Ссылка пропущена из-за ошибки: %s', e)
                         continue
 
-            self.status = 'stopped' if self._cancelled else 'done'
+            if self._cancelled:
+                self.status = 'stopped'
+            elif blocked_error:
+                self.status = 'partial' if self.count else 'error'
+                self.error = blocked_error
+            elif failed == len(urls) and not self.count:
+                self.status = 'error'
+                self.error = f'Не удалось обработать ни одну из {len(urls)} ссылок.'
+            elif failed:
+                self.status = 'partial'
+                self.error = f'Частичный результат: не обработано ссылок: {failed} из {len(urls)}.'
+            else:
+                self.status = 'done'
             if self._cancelled:
                 logger.info('Парсинг остановлен.')
             elif failed:
-                logger.warning('Готово частично: %d из %d ссылок не обработаны.', failed, len(urls))
+                logger.warning('%s', self.error)
                 logger.info('Парсинг завершён.')
             else:
                 logger.info('Парсинг завершён.')
@@ -178,7 +200,7 @@ class ParseJob:
             self._parser = None
             # Persist whatever was collected — full run, partial stop, or a crash
             # mid-run — so records survive reloads and aren't lost on Stop/error.
-            if self.status in ('done', 'stopped', 'error') and self.collector and self.collector.docs:
+            if self.status in ('done', 'partial', 'stopped', 'error') and self.collector and self.collector.docs:
                 try:
                     History().save(urls, self.collector.docs,
                                    self.collector._options.model_dump(mode='json'),

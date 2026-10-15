@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="kk">
+<html lang="ru">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -204,6 +204,10 @@
   #histMerge:hover{background:#e3e8fe}
   .hsel{display:flex;align-items:center;gap:6px;cursor:pointer}
   .hsel input{accent-color:var(--primary);flex:none}
+  .file-warning{display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:24px;background:#f5f6fa;color:#171922}
+  .file-warning-card{max-width:620px;padding:28px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 16px 50px #1f29371f;line-height:1.55}
+  .file-warning-card h2{margin:0 0 10px}.file-warning-card p{margin:8px 0}.file-warning-card code{word-break:break-all}
+  .file-warning-card a{color:var(--primary);font-weight:700}
   @media (max-width:1024px){
     .app{grid-template-columns:1fr}
     /* Drop the scroll container around the sidebar so native <select> pickers
@@ -220,6 +224,14 @@
 </style>
 </head>
 <body>
+<div class="file-warning" id="fileWarning" role="alert">
+  <div class="file-warning-card">
+    <h2>Parser2GIS открыт как файл</h2>
+    <p>Веб-интерфейсу нужен локальный сервер. Закройте эту вкладку и дважды щёлкните <code>start.command</code> в папке Parser2GIS.</p>
+    <p>Пока окно Терминала остаётся открытым, используйте адрес:</p>
+    <p><a href="http://127.0.0.1:8666/">http://127.0.0.1:8666/</a></p>
+  </div>
+</div>
 <div class="app">
   <aside>
     <div class="brand"><div class="logo">2G</div><h1>Parser 2GIS</h1>
@@ -232,7 +244,7 @@
     <div class="group">
       <label class="h" for="urls" data-i18n="urls_label">Сілтемелер</label>
       <textarea id="urls" placeholder="https://2gis.kz/almaty/search/Кафе&#10;https://2gis.ru/moscow/search/Аптеки"></textarea>
-      <div class="hint" id="urlsHint" data-i18n="urls_hint">Әр жолда бір 2GIS сілтемесі. Бірнеше қала және айдар болуы мүмкін.</div>
+      <div class="hint" id="urlsHint" data-i18n="urls_hint">Іздеу (/search/…), ұйым (/firm/…) немесе ғимарат (/inside/…) сілтемесі. Қала беті жеткіліксіз.</div>
     </div>
 
     <details class="sect" id="gen">
@@ -313,6 +325,10 @@
     <details class="sect" id="params">
       <summary data-i18n="params_title">📋 Параметрлер</summary>
       <div class="sectbody">
+        <label class="field"><span data-i18n="api_key">Ключ официального Places API 2GIS</span>
+          <input type="password" id="apiKey" data-i18n-ph="api_key_ph" placeholder="Вставьте ключ — он не сохраняется" autocomplete="off" spellcheck="false">
+        </label>
+        <div class="hint" data-i18n="api_key_hint">С ключом используется официальный API вместо Chrome. Контакты вернутся только при наличии соответствующего разрешения у ключа.</div>
         <label class="field"><span data-i18n="maxrec">Бір URL-ден макс. жазба</span><input type="number" id="maxrec" min="1" step="1" value="50"></label>
         <label class="check"><input type="checkbox" id="clean" checked> <span data-i18n="clean">Таза көрініс (қоқыссыз)</span></label>
         <label class="check"><input type="checkbox" id="headless" checked> <span data-i18n="headless">Жасырын браузер (headless)</span></label>
@@ -330,7 +346,7 @@
         <label class="check"><input type="checkbox" id="a_rmempty" checked> <span data-i18n="a_rmempty">Бос бағандарды жою</span></label>
         <label class="check"><input type="checkbox" id="a_rmdup" checked> <span data-i18n="a_rmdup">Қайталануларды жою</span></label>
         <div class="rowmini">
-          <label class="field"><span data-i18n="a_delay">Басу кідірісі, мс</span><input type="number" id="a_delay" min="0" step="50" value="0"></label>
+          <label class="field"><span data-i18n="a_delay">Басу кідірісі, мс</span><input type="number" id="a_delay" min="500" step="50" value="750"></label>
           <label class="field"><span data-i18n="a_cols">Өріске баған саны</span><input type="number" id="a_cols" min="1" max="5" value="3"></label>
         </div>
         <div class="rowmini">
@@ -398,23 +414,29 @@
 <script>
 (function(){
   var $=function(id){return document.getElementById(id)};
+  if(window.location.protocol==='file:'){
+    $('fileWarning').style.display='flex';
+    return;
+  }
   var poll=null, cursor=0, records=[], histId=null;
 
-  // ---- i18n (Қазақша default, Русский) ----
+  // ---- i18n (Русский по умолчанию, Қазақша доступен переключателем) ----
   var T={
     kk:{
-      urls_label:'Сілтемелер', urls_hint:'Әр жолда бір 2GIS сілтемесі. Бірнеше қала және айдар болуы мүмкін.',
+      urls_label:'Сілтемелер', urls_hint:'Іздеу (/search/…), ұйым (/firm/…) немесе ғимарат (/inside/…) сілтемесі. Қала беті жеткіліксіз.',
       gen_title:'🔗 Сілтеме жасау', country:'Ел', cities:'Қалалар', select_all:'барлығын таңдау', reset:'тазалау',
       district:'Аудан (міндетті емес)', no_district:'Аудансыз', district_sel:'Таңдалған аудан: ',
       district_custom_ph:'Өз ауданыңыз + Enter', dist_pick_city:'Алдымен қаланы таңдаңыз.',
       query:'Сұраныс', query_ph:'Тере бастаңыз: Кафе, Дәріхана…', rubric:'Айдар (міндетті емес)',
-      rubric_search_ph:'Айдарды іздеу…', wa_title:'💬 WhatsApp-тарату', wa_mode_label:'Қайда ашу',
+      rubric_search_ph:'Айдарды іздеу…', wa_title:'💬 WhatsApp арқылы қолмен байланысу', wa_mode_label:'Қайда ашу',
       wa_web:'WhatsApp Web (браузерде)', wa_app:'Қосымша / телефон (wa.me)', wa_templates:'Хабарлама үлгілері',
-      wa_add:'+ Үлгі қосу', wa_hint:'Карточкадағы «WhatsApp» басқанда чат кездейсоқ үлгімен ашылады. Бірнеше үлгі → әр мекемеге өз нұсқасы.',
+      wa_add:'+ Үлгі қосу', wa_hint:'Карточкадағы «WhatsApp» батырмасы чатты берілген үлгілердің бірімен ашады. Хабарлама автоматты түрде жіберілмейді.',
       filters_title:'🧹 Сүзгілер', f_dedup_niches:'Ниша аралық қайталанусыз (1 мекеме — 1 рет)', f_dedup:'Франшизасыз (ұйымға 1)', f_phone:'Тек телефоны барлар',
       f_wa:'Тек WhatsApp барлар', f_social:'Тек әлеуметтік желілермен', f_email:'Тек e-mail барлар',
       f_site:'Тек сайты барлар', rating_from:'Рейтинг (бастап)', reviews_from:'Пікірлер (бастап)',
-      params_title:'📋 Параметрлер', maxrec:'Бір URL-ден макс. жазба', clean:'Таза көрініс (қоқыссыз)',
+      params_title:'📋 Параметрлер', api_key:'2GIS Places API ресми кілті', api_key_ph:'Кілтті енгізіңіз — ол сақталмайды',
+      api_key_hint:'Кілт болғанда Chrome орнына ресми API қолданылады. Контактілер кілтте тиісті рұқсат болса ғана қайтарылады.',
+      maxrec:'Бір URL-ден макс. жазба', clean:'Таза көрініс (қоқыссыз)',
       headless:'Жасырын браузер (headless)', adv_title:'⚙️ Қосымша баптаулар', a_images:'Суреттерді өшіру (жылдамырақ)',
       a_max:'Браузерді жайып ашу', a_skip404:'Дәл сәйкестіктер («табылмады» өткізу)', a_rubrics:'«Айдарлар» бағаны',
       a_comments:'Ұяшықтардағы түсініктемелер (жұмыс уақыты т.б.)', a_rmempty:'Бос бағандарды жою',
@@ -429,7 +451,7 @@
       no_rubric_opt:'— айдарсыз —', add_links:'Сілтемелерді қосу', added:'Қосылды: ', wa_tpl_ph:'Хабарлама мәтіні…',
       found:'табылды', collected:'жиналды…', from_history:'(тарихтан)', merged:'(біріктірілді, дубльдер жойылды)',
       collecting:'Деректер жиналуда…', empty_notfound:'Сұраныс бойынша ештеңе табылмады.',
-      st_ready:'Дайын', st_running:'Парсинг жүруде…', st_done:'Дайын', st_stopped:'Тоқтатылды', st_error:'Қате',
+      st_ready:'Дайын', st_running:'Парсинг жүруде…', st_done:'Дайын', st_partial:'Ішінара дайын', st_stopped:'Тоқтатылды', st_error:'Қате',
       mark:'Хабарластық', mark_on:'✓ Хабарластық', note_ph:'Ескертпе…', hist_open:'Ашу',
       hist_merge:'⛁ Таңдалғанды біріктіру (дедуп)', recs_short:'жзб.', more:'тағы',
       a_need_url:'Кемінде бір 2GIS сілтемесін көрсетіңіз', a_need_query:'Сұранысты енгізіңіз',
@@ -438,17 +460,19 @@
       c_del:'Бұл жазбаны тарихтан жою керек пе?'
     },
     ru:{
-      urls_label:'Направления', urls_hint:'По одной ссылке 2GIS на строку. Можно несколько городов и рубрик.',
+      urls_label:'Направления', urls_hint:'Ссылка поиска (/search/…), организации (/firm/…) или здания (/inside/…). Страницы города недостаточно.',
       gen_title:'🔗 Создать ссылки', country:'Страна', cities:'Города', select_all:'выбрать все', reset:'сбросить',
       district:'Район (необязательно)', no_district:'Без района', district_sel:'Выбрано районов: ',
       district_custom_ph:'Свой район + Enter', dist_pick_city:'Сначала выберите город.',
       query:'Запрос', query_ph:'Начните печатать: Кафе, Аптеки…', rubric:'Рубрика (необязательно)',
-      rubric_search_ph:'Поиск рубрики…', wa_title:'💬 WhatsApp-рассылка', wa_mode_label:'Открывать в',
+      rubric_search_ph:'Поиск рубрики…', wa_title:'💬 Ручная связь через WhatsApp', wa_mode_label:'Открывать в',
       wa_web:'WhatsApp Web (в браузере)', wa_app:'Приложение / телефон (wa.me)', wa_templates:'Шаблоны сообщений',
-      wa_add:'+ Добавить шаблон', wa_hint:'При клике на «WhatsApp» в карточке откроется чат с подставленным случайным шаблоном. Несколько шаблонов → каждому заведению свой вариант.',
+      wa_add:'+ Добавить шаблон', wa_hint:'Кнопка «WhatsApp» в карточке открывает чат с одним из заданных шаблонов. Сообщение автоматически не отправляется.',
       filters_title:'🧹 Фильтры', f_dedup_niches:'Без повторов между нишами (1 заведение — 1 раз)', f_dedup:'Без франшиз (1 на организацию)', f_phone:'Только с телефоном',
       f_wa:'Только с WhatsApp', f_social:'Только с соцсетями', f_email:'Только с e-mail', f_site:'Только с сайтом',
       rating_from:'Рейтинг от', reviews_from:'Отзывов от', params_title:'📋 Параметры',
+      api_key:'Ключ официального Places API 2GIS', api_key_ph:'Вставьте ключ — он не сохраняется',
+      api_key_hint:'С ключом используется официальный API вместо Chrome. Контакты вернутся только при наличии соответствующего разрешения у ключа.',
       maxrec:'Макс. записей с одного URL', clean:'Чистый вид (без мусора)', headless:'Скрытый браузер (headless)',
       adv_title:'⚙️ Расширенные настройки', a_images:'Отключить изображения (быстрее)', a_max:'Запускать браузер развёрнутым',
       a_skip404:'Точные совпадения (пропуск «не найдено»)', a_rubrics:'Колонка «Рубрики»',
@@ -464,7 +488,7 @@
       no_rubric_opt:'— без рубрики —', add_links:'Добавить ссылки', added:'Добавлено: ', wa_tpl_ph:'Текст сообщения…',
       found:'найдено', collected:'собрано…', from_history:'(из истории)', merged:'(объединено, дубли убраны)',
       collecting:'Собираем данные…', empty_notfound:'Ничего не найдено по запросу.',
-      st_ready:'Готов', st_running:'Идёт парсинг…', st_done:'Готово', st_stopped:'Остановлено', st_error:'Ошибка',
+      st_ready:'Готов', st_running:'Идёт парсинг…', st_done:'Готово', st_partial:'Готово частично', st_stopped:'Остановлено', st_error:'Ошибка',
       mark:'Связались', mark_on:'✓ Связались', note_ph:'Заметка…', hist_open:'Открыть',
       hist_merge:'⛁ Объединить выбранные (дедуп)', recs_short:'зап.', more:'ещё',
       a_need_url:'Укажите хотя бы одну ссылку 2GIS', a_need_query:'Введите запрос',
@@ -473,8 +497,8 @@
       c_del:'Удалить эту запись из истории?'
     }
   };
-  var LANG='kk', lastStatus='idle';
-  function t(k){return (T[LANG]&&T[LANG][k]!=null)?T[LANG][k]:(T.kk[k]!=null?T.kk[k]:k);}
+  var LANG='ru', lastStatus='idle';
+  function t(k){return (T[LANG]&&T[LANG][k]!=null)?T[LANG][k]:(T.ru[k]!=null?T.ru[k]:k);}
   function applyLang(lang){
     LANG=(lang==='ru')?'ru':'kk'; var d=T[LANG];
     [].forEach.call(document.querySelectorAll('[data-i18n]'),function(el){var k=el.getAttribute('data-i18n'); if(d[k]!=null)el.textContent=d[k];});
@@ -504,6 +528,7 @@
     return {
       urls: $('urls').value.split('\n'),
       directions: directions,
+      api_key: $('apiKey').value.trim(),
       max_records: parseInt($('maxrec').value||'50',10),
       headless: $('headless').checked,
       clean: $('clean').checked,
@@ -517,7 +542,7 @@
         disable_images:$('a_images').checked, start_maximized:$('a_max').checked,
         skip_404_response:$('a_skip404').checked, add_rubrics:$('a_rubrics').checked,
         add_comments:$('a_comments').checked, remove_empty_columns:$('a_rmempty').checked,
-        remove_duplicates:$('a_rmdup').checked, delay_between_clicks:parseInt($('a_delay').value||'0',10),
+        remove_duplicates:$('a_rmdup').checked, delay_between_clicks:parseInt($('a_delay').value||'750',10),
         columns_per_entity:parseInt($('a_cols').value||'3',10),
         memory_limit:parseInt($('a_mem').value||'0',10), encoding:$('a_enc').value
       }
@@ -526,7 +551,7 @@
 
   function setStatus(s){
     lastStatus=s; var pill=$('pill'), tx=$('pilltext');
-    pill.className='pill'; var map={running:['run','st_running'],done:['done','st_done'],
+    pill.className='pill'; var map={running:['run','st_running'],done:['done','st_done'],partial:['stop','st_partial'],
       stopped:['stop','st_stopped'],error:['err','st_error'],idle:['','st_ready']};
     var m=map[s]||map.idle; if(m[0])pill.classList.add(m[0]); tx.textContent=t(m[1]);
   }
@@ -829,13 +854,13 @@
     // Preserve which curated districts were already checked across re-renders.
     var wasChecked={};
     [].forEach.call(box.querySelectorAll('input[data-city]:checked'),function(i){
-      wasChecked[i.getAttribute('data-city')+' '+i.getAttribute('data-name')]=1;});
+      wasChecked[i.getAttribute('data-city')+'\u0000'+i.getAttribute('data-name')]=1;});
     cities.forEach(function(c){
       var ds=GEN.districts[c.code]||[];
       if(!ds.length)return;
       if(multi)html+='<div class="distGroup">'+esc(c.name)+'</div>';
       html+=ds.map(function(d){
-        var on=wasChecked[c.code+' '+d]?' checked':'';
+        var on=wasChecked[c.code+'\u0000'+d]?' checked':'';
         return '<label><input type="checkbox" data-city="'+esc(c.code)+'" data-name="'+esc(d)+'"'+on+'> '+esc(d)+'</label>';
       }).join('');
     });
@@ -873,7 +898,7 @@
     fetch('/api/generator').then(function(r){return r.json()}).then(function(d){
       GEN.cities=d.cities; GEN.rubrics=d.rubrics; GEN.districts=d.districts||{}; GEN.loaded=true;
       $('genCountry').innerHTML=d.countries.map(function(c){
-        return '<option value="'+esc(c.code)+'"'+(c.code==='kz'?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
+        return '<option value="'+esc(c.code)+'"'+(c.code==='ru'?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
       renderGenCities(); renderGenDists(); renderGenRubrics(); renderGenQueryList();
     }).catch(function(){});
   }
@@ -968,7 +993,7 @@
 
   // Restore state on load: preload generator data, show last results / resume a job.
   (function init(){
-    var savedLang='kk'; try{savedLang=localStorage.getItem('lang')||'kk';}catch(_){}
+    var savedLang='ru'; try{savedLang=localStorage.getItem('lang')||'ru';}catch(_){}
     applyLang(savedLang);
     loadGenerator();
     loadHistory();

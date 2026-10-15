@@ -82,12 +82,11 @@ class ChromeRemote:
         requests.put('%s/json/close/%s' % (self._dev_url, tab.id))
 
     def _setup_tab(self) -> None:
-        """Hide webdriver, enable requests/response interception, fix UA."""
-        # Fix user agent for headless browser
-        original_useragent = self.execute_script('navigator.userAgent')
-        fixed_useragent = original_useragent.replace('Headless', '')
-        self._chrome_tab.Network.setUserAgentOverride(userAgent=fixed_useragent)
+        """Enable request/response interception and configure the viewport.
 
+        The browser keeps its normal automation/headless indicators. Parser2GIS
+        does not attempt to disguise automation or bypass access controls.
+        """
         # Force a real, large viewport for the headless tab. A DevTools-created
         # tab otherwise gets a tiny default viewport, which makes the 2GIS WebGL
         # map collapse to a single geographic point. The page then sends a
@@ -96,13 +95,6 @@ class ChromeRemote:
         if self._chrome_options.headless:
             self._chrome_tab.Emulation.setDeviceMetricsOverride(
                 width=1920, height=1080, deviceScaleFactor=1, mobile=False)
-
-        # Hide webdriver traces
-        self.add_start_script(r'''
-            Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined
-            })
-        ''')
 
         # def requestPaused(**kwargs):
         #     """Modify outgoing headers."""

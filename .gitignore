@@ -1,10 +1,14 @@
 venv/
 .venv/
+.runtime/
+logs/
 __pycache__/
 dist/
 .vscode/
 *.egg-info/
 .pytest_cache/
 build/
+*.spec
 .tox/
 .mypy_cache/
+.DS_Store
