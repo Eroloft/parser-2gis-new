@@ -1,50 +1,89 @@
+# Development builds: Windows .exe, macOS arm64 .dmg, Linux binary
+# macos-14 retired/brownout (Oct–Nov 2026) → use macos-15
+
 name: Development Build
 
 on:
   push:
+    branches: [main, master]
+  workflow_dispatch:
 
 jobs:
   build:
-    name: Development Build
-
+    name: Build (${{ matrix.dist }})
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-22.04
             dist: linux
-            ext:
-
-          - os: macos-14
+          - os: macos-15
             dist: macos-arm
-            ext:
-
           - os: windows-2022
             dist: windows
-            ext: .exe
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install -e .[dev]
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip setuptools wheel
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6.6.0"
 
-    - name: Build standalone app
-      run: |
-        python setup.py build_standalone
+      - name: Build standalone
+        run: python setup.py build_standalone
 
-    - name: Upload distributive
-      uses: actions/upload-artifact@v4
-      with:
-        name: Parser2GIS-dev-${{matrix.dist}}
-        path: dist/Parser2GIS${{matrix.ext}}
-        retention-days: 30
+      - name: Package artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          ls -la dist/ || true
+
+          if [ "${{ matrix.dist }}" = "windows" ]; then
+            if [ -f dist/Parser2GIS.exe ]; then
+              cp dist/Parser2GIS.exe out/
+            else
+              echo "Missing Parser2GIS.exe" && ls -laR dist && exit 1
+            fi
+          elif [ "${{ matrix.dist }}" = "macos-arm" ]; then
+            if [ -d dist/Parser2GIS.app ]; then
+              mkdir -p dmg_root
+              cp -R dist/Parser2GIS.app dmg_root/
+              hdiutil create -volname "Parser2GIS" -srcfolder dmg_root -ov -format UDZO out/Parser2GIS-macos-arm64.dmg
+              ditto -c -k --sequesterRsrc --keepParent dist/Parser2GIS.app out/Parser2GIS.app.zip
+            elif [ -f dist/Parser2GIS ]; then
+              mkdir -p dmg_root
+              cp dist/Parser2GIS dmg_root/
+              hdiutil create -volname "Parser2GIS" -srcfolder dmg_root -ov -format UDZO out/Parser2GIS-macos-arm64.dmg
+              cp dist/Parser2GIS out/Parser2GIS-macos-arm64
+            else
+              echo "No macOS binary in dist/" && ls -laR dist && exit 1
+            fi
+          else
+            if [ -f dist/Parser2GIS ]; then
+              cp dist/Parser2GIS out/Parser2GIS-linux
+              tar -C out -czvf out/Parser2GIS-linux.tar.gz Parser2GIS-linux
+            else
+              echo "Missing Parser2GIS" && ls -laR dist && exit 1
+            fi
+          fi
+          ls -la out/
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Parser2GIS-dev-${{ matrix.dist }}
+          path: out/*
+          if-no-files-found: error
+          retention-days: 30

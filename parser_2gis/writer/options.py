@@ -59,6 +59,24 @@ class FilterOptions(BaseModel):
     min_reviews: int = Field(0, ge=0)
 
 
+class EnrichWriterOptions(BaseModel):
+    """Post-parse enrichment: Telegram/VK/phone/email + website validity & modernity.
+
+    Applied after 2GIS scrape, before CSV/XLSX/HTML write. Safe to leave disabled.
+    """
+    model_config = ConfigDict(validate_assignment=True)
+
+    enabled: bool = False
+    check_websites: bool = True
+    scrape_site_for_contacts: bool = False
+    max_workers: int = Field(8, ge=1, le=32)
+    website_timeout: float = Field(8.0, ge=2.0, le=30.0)
+    dedup_name_address: bool = True
+    dedup_name_phone: bool = True
+    dedup_history_path: str = ''
+    skip_seen_in_history: bool = False
+
+
 class WriterOptions(BaseModel):
     """Represent all possible options for File Writer.
 
@@ -71,6 +89,7 @@ class WriterOptions(BaseModel):
     encoding: str = 'utf-8-sig'
     verbose: bool = True
     csv: CSVOptions = Field(default_factory=CSVOptions)
+    enrich: EnrichWriterOptions = Field(default_factory=EnrichWriterOptions)
 
     @field_validator('encoding')
     @classmethod

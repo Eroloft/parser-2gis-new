@@ -38,31 +38,27 @@ class BuildStandaloneCommand(distutils.cmd.Command):
         import sys
 
         try:
-            # Target filename
             dist_filename = 'Parser2GIS'
 
-            # Dist
             build_cmd = [
                 'pyinstaller',
                 '--clean',
+                '--noconfirm',
                 '--onefile',
-                '--windowed',
                 '-n', dist_filename,
             ]
 
-            # Icon
-            if sys.platform.startswith('win'):
-                build_cmd += [
-                    '--icon', 'parser_2gis/data/images/icon.ico',
-                ]
-            elif sys.platform.startswith('darwin'):
-                build_cmd += [
-                    '--icon', 'parser_2gis/data/images/icon.icns',
-                ]
+            # GUI mode on Win/mac (opens browser UI, no console)
+            if sys.platform.startswith('win') or sys.platform.startswith('darwin'):
+                build_cmd.append('--windowed')
 
-            # Add data (reference data + bundled web dashboard assets).
-            # The web UI is served from parser_2gis/web/static, so it must be
-            # frozen into the binary or the dashboard 404s.
+            if sys.platform.startswith('win'):
+                build_cmd += ['--icon', 'parser_2gis/data/images/icon.ico']
+            elif sys.platform.startswith('darwin'):
+                build_cmd += ['--icon', 'parser_2gis/data/images/icon.icns']
+                # CI arm64 runners (macos-15): explicit arch
+                build_cmd += ['--target-architecture', 'arm64']
+
             build_cmd += [
                 '--add-data', f'parser_2gis/data{os.pathsep}parser_2gis/data',
                 '--add-data', f'parser_2gis/web{os.pathsep}parser_2gis/web',
@@ -71,8 +67,12 @@ class BuildStandaloneCommand(distutils.cmd.Command):
 
             print('Running command: %s' % ' '.join(build_cmd), file=sys.stderr)
             subprocess.check_call(build_cmd)
+
+            dist = ROOT_DIR / 'dist'
+            if dist.is_dir():
+                for item in sorted(dist.iterdir()):
+                    print(f'  dist artifact: {item.name}', file=sys.stderr)
         finally:
-            # Cleanup
             shutil.rmtree(ROOT_DIR / 'build', ignore_errors=True)
             try:
                 os.remove(ROOT_DIR / f'{dist_filename}.spec')

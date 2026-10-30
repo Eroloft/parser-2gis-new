@@ -1,105 +1,144 @@
+# Release builds on tag v*.*.*
+# macos-15 (arm64) → .dmg; windows → .zip with .exe; linux → .tar.gz
+
 name: Release
 
 on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version label for artifacts when run manually'
+        required: false
+        default: 'manual'
 
 jobs:
   build:
-    name: Build
-
+    name: Build (${{ matrix.dist }})
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-22.04
             dist: linux
-
-          - os: macos-14
+          - os: macos-15
             dist: macos-arm
-
           - os: windows-2022
             dist: windows
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
 
     steps:
-    - name: Get the version
-      id: get_version
-      run: echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-      shell: bash
+      - name: Version from tag or input
+        id: ver
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${{ github.event.inputs.version || 'manual' }}" >> "$GITHUB_OUTPUT"
+          fi
 
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install -e .[dev]
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip setuptools wheel
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6.6.0"
 
-    - name: Build standalone app
-      run: |
-        python setup.py build_standalone
+      - name: Build standalone
+        run: python setup.py build_standalone
 
-    - name: Archive Windows distributive
-      if: matrix.dist == 'windows'
-      run: pushd dist && 7z a ../Parser2GIS-${{steps.get_version.outputs.version}}-${{matrix.dist}}.zip Parser2GIS.exe && popd
-      shell: bash
+      - name: Package
+        shell: bash
+        run: |
+          set -euo pipefail
+          VER="${{ steps.ver.outputs.version }}"
+          mkdir -p out
+          ls -la dist/ || true
 
-    - name: Archive Linux/MacOS distributive
-      if: matrix.dist != 'windows'
-      run: tar -C dist/ -czvf Parser2GIS-${{steps.get_version.outputs.version}}-${{matrix.dist}}.tar.gz Parser2GIS
-      shell: bash
+          case "${{ matrix.dist }}" in
+            windows)
+              test -f dist/Parser2GIS.exe
+              (cd dist && 7z a "../out/Parser2GIS-${VER}-windows.zip" Parser2GIS.exe)
+              ;;
+            linux)
+              test -f dist/Parser2GIS
+              tar -C dist -czvf "out/Parser2GIS-${VER}-linux.tar.gz" Parser2GIS
+              ;;
+            macos-arm)
+              mkdir -p dmg_root
+              if [ -d dist/Parser2GIS.app ]; then
+                cp -R dist/Parser2GIS.app dmg_root/
+              elif [ -f dist/Parser2GIS ]; then
+                cp dist/Parser2GIS dmg_root/
+              else
+                echo "No mac artifact" && ls -laR dist && exit 1
+              fi
+              hdiutil create -volname "Parser2GIS" -srcfolder dmg_root -ov -format UDZO \
+                "out/Parser2GIS-${VER}-macos-arm64.dmg"
+              if [ -d dist/Parser2GIS.app ]; then
+                tar -C dist -czvf "out/Parser2GIS-${VER}-macos-arm64-app.tar.gz" Parser2GIS.app
+              fi
+              ;;
+          esac
+          ls -la out/
 
-    - name: Upload distributive
-      uses: actions/upload-artifact@v4
-      with:
-        name: dist-${{ matrix.dist }}
-        path: Parser2GIS-*
-        retention-days: 5
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.dist }}
+          path: out/*
+          if-no-files-found: error
+          retention-days: 14
 
   release:
-    name: Release
-
+    name: GitHub Release
     needs: [build]
-
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
-
     steps:
-    - name: Get the version
-      id: get_version
-      run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
-      shell: bash
+      - name: Version
+        id: ver
+        shell: bash
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Get Changelog Entry
-      id: changelog_reader
-      uses: mindsers/changelog-reader-action@v2
-      with:
-        version: ${{ steps.get_version.outputs.version }}
-        path: ./CHANGELOG.md
+      - name: Changelog entry
+        id: changelog
+        uses: mindsers/changelog-reader-action@v2
+        with:
+          version: ${{ steps.ver.outputs.version }}
+          path: ./CHANGELOG.md
+        continue-on-error: true
 
-    - uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-        merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
 
-    - uses: ncipollo/release-action@v1
-      with:
-        tag: v${{ steps.changelog_reader.outputs.version }}
-        name: Parser2GIS ${{ steps.changelog_reader.outputs.version }}
-        body: ${{ steps.changelog_reader.outputs.changes }}
-        prerelease: ${{ steps.changelog_reader.outputs.status == 'prereleased' }}
-        draft: true
-        artifacts: "artifacts/*"
-        allowUpdates: true
-        token: ${{ secrets.GITHUB_TOKEN }}
+      - name: List artifacts
+        run: find artifacts -type f | sort
+
+      - uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ steps.ver.outputs.version }}
+          name: Parser2GIS ${{ steps.ver.outputs.version }}
+          body: ${{ steps.changelog.outputs.changes || 'See CHANGELOG.md' }}
+          draft: true
+          artifacts: 'artifacts/*'
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
